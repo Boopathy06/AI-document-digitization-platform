@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Document Digitization</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 4rem auto; padding: 0 1rem; color: #1f2937; }
+    .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 1.5rem; }
+    input, button { margin-top: .75rem; }
+    button { background: #1d4ed8; border: 0; border-radius: 4px; color: white; cursor: pointer; padding: .65rem 1rem; }
+    .message { border-radius: 4px; margin: 1rem 0; padding: .75rem; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .success { background: #dcfce7; color: #166534; }
+  </style>
+</head>
+<body>
+  <h1>Smart Document Digitization Platform</h1>
+  <p>Upload a scanned document to assess its quality and extract its text.</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="message {{ category }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <section class="card">
+    <form action="{{ url_for('upload_document') }}" method="post" enctype="multipart/form-data">
+      <label for="document">Choose an image or PDF</label><br>
+      <input id="document" name="document" type="file" accept=".png,.jpg,.jpeg,.pdf" required>
+      <br>
+      <button type="submit">Upload document</button>
+    </form>
+    <p><small>Accepted formats: PNG, JPG, JPEG, PDF. Maximum size: 16 MB.</small></p>
+  </section>
+
+  {% if uploaded_filename %}
+    <div class="message success" role="status">
+      <strong>Upload complete.</strong> {{ uploaded_filename }} has been assessed, processed by OCR, and classified.
+    </div>
+    {% if saved_document_id %}
+      <div class="message success" role="status">Saved to the database as record #{{ saved_document_id }}.</div>
+    {% endif %}
+  {% endif %}
+
+  {% if quality_report %}
+    <section class="card">
+      <h2>Image quality assessment</h2>
+      <ul>
+        <li><strong>Blur:</strong> {{ quality_report.blur_status }} (score: {{ '%.2f'|format(quality_report.blur_score) }})</li>
+        <li><strong>Brightness:</strong> {{ quality_report.brightness_status }} (score: {{ '%.2f'|format(quality_report.brightness_score) }})</li>
+        <li><strong>Rotation:</strong> {{ quality_report.rotation_status }}</li>
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if enhancement %}
+    <section class="card">
+      <h2>Image enhancement</h2>
+      <p>An enhanced copy was created for OCR. The original upload is unchanged.</p>
+      <ul>
+        {% for action in enhancement.actions %}
+          <li>{{ action }}</li>
+        {% endfor %}
+      </ul>
+      <p><a href="{{ url_for('enhanced_document', filename=enhancement.output_path.name) }}" target="_blank">Open enhanced image</a></p>
+    </section>
+  {% endif %}
+
+  {% if uploaded_filename %}
+    <section class="card">
+      <h2>Document classification</h2>
+      <p><strong>Detected type:</strong> {{ classification.document_type }}</p>
+      {% if classification.matched_keyword %}
+        <p><small>Matched keyword: {{ classification.matched_keyword }}</small></p>
+      {% else %}
+        <p><small>No classification keyword was found. This document will use an extractor only after its rule is added.</small></p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if uploaded_filename %}
+    <section class="card">
+      <h2>Document-specific fields</h2>
+      <p><small>Extractor used: {{ extraction.extractor_name }}</small></p>
+      {% if extraction.fields %}
+        <ul>
+          {% for field_name, field_value in extraction.fields.items() %}
+            <li><strong>{{ field_name }}:</strong> {{ field_value }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No reliable fields were found for this document. Check the OCR text below.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if uploaded_filename %}
+    <section class="card">
+      <h2>Duplicate detection</h2>
+      {% if duplicate_check.is_duplicate %}
+        <p class="message error"><strong>Duplicate detected.</strong> {{ duplicate_check.reason }}</p>
+      {% else %}
+        <p class="message success"><strong>No exact duplicate detected.</strong> {{ duplicate_check.reason }}</p>
+      {% endif %}
+      <p><small>Aadhaar and certificate-number checks are performed against saved SQLite records before a new record is inserted.</small></p>
+    </section>
+  {% endif %}
+
+  {% if ocr_text is not none and uploaded_filename %}
+    <section class="card">
+      <h2>Extracted text</h2>
+      {% if ocr_text %}
+        <pre>{{ ocr_text }}</pre>
+      {% else %}
+        <p>No text was detected in this document.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+</body>
+</html>

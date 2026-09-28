@@ -1,0 +1,568 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Smart Government Document Intelligence Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header & Actions -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">
+        <i class="bi bi-grid-1x2-fill text-primary me-2"></i>Document Intelligence Dashboard
+      </h2>
+      <p class="text-muted mb-0">
+        Monitor digitized government records, deduplication audit logs, and extraction statistics.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('home') }}" class="btn btn-primary-custom">
+        <i class="bi bi-plus-circle"></i> Upload Document
+      </a>
+      <a href="{{ url_for('dashboard_view') }}" class="btn btn-outline-custom" title="Refresh Dashboard">
+        <i class="bi bi-arrow-clockwise"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="row g-3 mb-4">
+    <!-- Total Documents -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="glass-card stat-card stat-primary h-100 d-flex align-items-center gap-3">
+        <div class="stat-icon bg-primary bg-opacity-25 text-primary">
+          <i class="bi bi-file-earmark-check-fill"></i>
+        </div>
+        <div>
+          <div class="stat-value text-white">{{ stats.total_documents }}</div>
+          <div class="stat-label">Digitized Records</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duplicates Intercepted -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="glass-card stat-card stat-warning h-100 d-flex align-items-center gap-3">
+        <div class="stat-icon bg-warning bg-opacity-25 text-warning">
+          <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div>
+          <div class="stat-value text-white">{{ stats.duplicates_blocked }}</div>
+          <div class="stat-label">Duplicates Blocked</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Document Types -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="glass-card stat-card stat-cyan h-100 d-flex align-items-center gap-3">
+        <div class="stat-icon bg-info bg-opacity-25 text-info">
+          <i class="bi bi-collection-fill"></i>
+        </div>
+        <div>
+          <div class="stat-value text-white">{{ stats.type_breakdown|length }}</div>
+          <div class="stat-label">Document Types</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Districts Covered -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="glass-card stat-card stat-success h-100 d-flex align-items-center gap-3">
+        <div class="stat-icon bg-success bg-opacity-25 text-success">
+          <i class="bi bi-geo-alt-fill"></i>
+        </div>
+        <div>
+          <div class="stat-value text-white">{{ stats.districts_count }}</div>
+          <div class="stat-label">Districts Active</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Type Quick Filters -->
+  <div class="glass-card mb-4 p-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <span class="text-muted small fw-bold text-uppercase">
+        <i class="bi bi-funnel me-1"></i> Quick Filters:
+      </span>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('dashboard_view') }}" 
+           class="btn btn-sm {% if not selected_type or selected_type == 'All' %}btn-primary{% else %}btn-outline-secondary text-light{% endif %}">
+          All ({{ stats.total_documents }})
+        </a>
+        {% for doc_type, count in stats.type_breakdown.items() %}
+          <a href="{{ url_for('dashboard_view', type=doc_type, search=search_query, district=selected_district) }}" 
+             class="btn btn-sm {% if selected_type == doc_type %}btn-primary{% else %}btn-outline-secondary text-light{% endif %}">
+            {{ doc_type }} ({{ count }})
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content: Document Records & Side Audit Log -->
+  <div class="row g-4">
+    <!-- Documents Table -->
+    <div class="col-12 col-lg-8">
+      <div class="glass-card">
+        <!-- Search & Filter Form -->
+        <form method="get" action="{{ url_for('dashboard_view') }}" class="mb-3">
+          <div class="row g-2">
+            <div class="col-12 col-md-5">
+              <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-muted">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" name="search" class="form-control custom-input" 
+                       placeholder="Search citizen name, cert #, Aadhaar..." 
+                       value="{{ search_query or '' }}">
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <select name="type" class="form-select custom-select">
+                <option value="All">All Types</option>
+                {% for dtype in all_types %}
+                  <option value="{{ dtype }}" {% if selected_type == dtype %}selected{% endif %}>{{ dtype }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <select name="district" class="form-select custom-select">
+                <option value="All">All Districts</option>
+                {% for dist in all_districts %}
+                  <option value="{{ dist }}" {% if selected_district == dist %}selected{% endif %}>{{ dist }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-1">
+              <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
+                Filter
+              </button>
+              {% if search_query or (selected_type and selected_type != 'All') or (selected_district and selected_district != 'All') %}
+                <a href="{{ url_for('dashboard_view') }}" class="btn btn-outline-custom" title="Clear Filters">
+                  <i class="bi bi-x-lg"></i>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </form>
+
+        <!-- Records Table -->
+        <div class="custom-table-container">
+          <table class="table custom-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Citizen Name</th>
+                <th>Identifier</th>
+                <th>District</th>
+                <th>Uploaded</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if documents %}
+                {% for doc in documents %}
+                  <tr>
+                    <td class="fw-bold text-muted">#{{ doc.id }}</td>
+                    <td>
+                      {% if 'Birth' in doc.document_type %}
+                        <span class="badge-doc-type badge-birth"><i class="bi bi-balloon"></i> {{ doc.document_type }}</span>
+                      {% elif 'Income' in doc.document_type %}
+                        <span class="badge-doc-type badge-income"><i class="bi bi-cash-stack"></i> {{ doc.document_type }}</span>
+                      {% elif 'Community' in doc.document_type %}
+                        <span class="badge-doc-type badge-community"><i class="bi bi-people"></i> {{ doc.document_type }}</span>
+                      {% elif 'Aadhaar' in doc.document_type %}
+                        <span class="badge-doc-type badge-aadhaar"><i class="bi bi-person-badge"></i> {{ doc.document_type }}</span>
+                      {% else %}
+                        <span class="badge-doc-type badge-generic"><i class="bi bi-file-text"></i> {{ doc.document_type }}</span>
+                      {% endif %}
+                      {% if doc.file_path and doc.file_path.lower().endswith('.pdf') %}
+                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 ms-1" style="font-size: 0.68rem;">
+                          <i class="bi bi-file-earmark-pdf"></i> PDF
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="fw-semibold text-white">
+                      {{ doc.citizen_name or '<span class="text-muted fst-italic">Not extracted</span>'|safe }}
+                    </td>
+                    <td>
+                      {% if doc.certificate_number %}
+                        <code class="text-info">{{ doc.certificate_number }}</code>
+                      {% elif doc.aadhaar_number %}
+                        <code class="text-warning">{{ doc.aadhaar_number }}</code>
+                      {% else %}
+                        <span class="text-muted small">-</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if doc.district %}
+                        <span class="text-light"><i class="bi bi-geo-alt me-1 text-muted"></i>{{ doc.district }}</span>
+                      {% else %}
+                        <span class="text-muted small">-</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-muted small">
+                      {{ doc.upload_date[:10] if doc.upload_date else '-' }}
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-info inspect-btn" 
+                              data-doc-id="{{ doc.id }}" 
+                              title="Inspect Extracted Fields & Image">
+                        <i class="bi bi-eye"></i> Inspect
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="7" class="text-center py-5">
+                    <div class="text-muted">
+                      <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                      <h6>No documents found</h6>
+                      <p class="small mb-3">Try clearing filters or upload a document to get started.</p>
+                      <a href="{{ url_for('home') }}" class="btn btn-sm btn-primary-custom">
+                        <i class="bi bi-cloud-arrow-up me-1"></i> Upload Document
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary Count -->
+        <div class="d-flex justify-content-between align-items-center mt-3 text-muted small">
+          <span>Showing <strong>{{ documents|length }}</strong> of <strong>{{ total_count }}</strong> records</span>
+          {% if total_count > documents|length %}
+            <span class="badge bg-secondary">Top 50 results</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Panel: Duplicate Interceptions & Activity -->
+    <div class="col-12 col-lg-4">
+      <!-- Duplicate Prevention Audit -->
+      <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0 text-white">
+            <i class="bi bi-shield-shaded text-warning me-2"></i>Deduplication Audit
+          </h6>
+          <span class="badge bg-warning bg-opacity-25 text-warning">{{ stats.duplicates_blocked }} Blocked</span>
+        </div>
+        <p class="text-muted small mb-3">
+          Documents rejected to prevent duplicate government issuance or redundant storage.
+        </p>
+
+        {% if stats.recent_duplicates %}
+          <div class="d-flex flex-column gap-2">
+            {% for dup in stats.recent_duplicates %}
+              <div class="p-2 rounded border border-secondary border-opacity-25 bg-dark bg-opacity-50">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-semibold text-danger small">
+                    <i class="bi bi-x-circle me-1"></i>{{ dup.filename }}
+                  </span>
+                  <span class="text-muted" style="font-size: 0.72rem;">{{ dup.detected_at }}</span>
+                </div>
+                <div class="text-muted small" style="font-size: 0.8rem;">
+                  {{ dup.reason }}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted small">
+            <i class="bi bi-check2-circle fs-3 text-success d-block mb-1"></i>
+            No duplicate upload attempts logged yet.
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Quick Document Type Summary Card -->
+      <div class="glass-card">
+        <h6 class="fw-bold mb-3 text-white">
+          <i class="bi bi-pie-chart-fill text-info me-2"></i>Distribution by Type
+        </h6>
+        {% if stats.type_breakdown %}
+          <div class="d-flex flex-column gap-2">
+            {% for dtype, count in stats.type_breakdown.items() %}
+              {% set percent = (count / stats.total_documents * 100)|round(1) if stats.total_documents > 0 else 0 %}
+              <div>
+                <div class="d-flex justify-content-between small mb-1">
+                  <span class="text-light">{{ dtype }}</span>
+                  <span class="text-muted">{{ count }} ({{ percent }}%)</span>
+                </div>
+                <div class="progress" style="height: 6px; background-color: #0e1526;">
+                  <div class="progress-bar bg-primary" role="progressbar" style="width: {{ percent }}%;"></div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-3 text-muted small">
+            No document data available.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Document Inspection Modal -->
+<div class="modal fade" id="inspectModal" tabindex="-1" aria-labelledby="inspectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content modal-content-custom">
+      <div class="modal-header modal-header-custom">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-medical-fill text-primary fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="inspectModalLabel">Document Inspection</h5>
+            <span class="text-muted small" id="modalSubHeader">Loading record...</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Spinner placeholder -->
+        <div id="modalLoading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Loading document intelligence...</p>
+        </div>
+
+        <!-- Detail content -->
+        <div id="modalDetails" class="d-none">
+          <div class="row g-4">
+            <!-- Left: Document Image Preview -->
+            <div class="col-12 col-md-5">
+              <div class="glass-card p-3 h-100 d-flex flex-column">
+                <h6 class="fw-bold mb-2 text-white">
+                  <i class="bi bi-image me-1 text-info"></i> Document Preview
+                </h6>
+                <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-black rounded p-2 overflow-hidden" style="min-height: 320px;">
+                  <img id="modalDocImage" src="" alt="Document Preview" class="img-fluid rounded" style="max-height: 480px; object-fit: contain;">
+                </div>
+                <div class="mt-2 text-center">
+                  <div id="modalPdfPagesRow" class="d-flex flex-wrap gap-1 justify-content-center mb-2 d-none"></div>
+                  <a id="modalDocLink" href="#" target="_blank" class="btn btn-sm btn-outline-custom">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open Full Image
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Extracted Structured Fields & OCR -->
+            <div class="col-12 col-md-7">
+              <!-- Key Fields Card -->
+              <div class="glass-card mb-3 p-3">
+                <h6 class="fw-bold mb-3 text-white">
+                  <i class="bi bi-card-checklist me-1 text-success"></i> Structured Extracted Fields
+                </h6>
+                <div class="row g-2" id="modalKeyFieldsContainer">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- Extra Extracted Fields (if any) -->
+              <div class="glass-card mb-3 p-3 d-none" id="modalExtraFieldsSection">
+                <h6 class="fw-bold mb-2 text-white small text-uppercase">
+                  Additional Extracted Attributes
+                </h6>
+                <div class="row g-2" id="modalExtraFieldsContainer">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- Raw OCR Output Box -->
+              <div class="glass-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold mb-0 text-white">
+                    <i class="bi bi-terminal me-1 text-primary"></i> Extracted OCR Text
+                  </h6>
+                  <button class="btn btn-sm btn-outline-custom py-0 px-2" id="copyOcrBtn" title="Copy OCR Text">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+                <div class="ocr-box" id="modalOcrText">
+                  No OCR text available.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer modal-footer-custom">
+        <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const inspectModalEl = document.getElementById("inspectModal");
+  const inspectModal = new bootstrap.Modal(inspectModalEl);
+  const loadingEl = document.getElementById("modalLoading");
+  const detailsEl = document.getElementById("modalDetails");
+  const subHeader = document.getElementById("modalSubHeader");
+  const keyFieldsContainer = document.getElementById("modalKeyFieldsContainer");
+  const extraFieldsSection = document.getElementById("modalExtraFieldsSection");
+  const extraFieldsContainer = document.getElementById("modalExtraFieldsContainer");
+  const ocrTextBox = document.getElementById("modalOcrText");
+  const docImage = document.getElementById("modalDocImage");
+  const docLink = document.getElementById("modalDocLink");
+  const copyBtn = document.getElementById("copyOcrBtn");
+
+  document.querySelectorAll(".inspect-btn").forEach(button => {
+    button.addEventListener("click", function() {
+      const docId = this.getAttribute("data-doc-id");
+      openInspectModal(docId);
+    });
+  });
+
+  function openInspectModal(docId) {
+    loadingEl.classList.remove("d-none");
+    detailsEl.classList.add("d-none");
+    subHeader.textContent = "Fetching record #" + docId + "...";
+    inspectModal.show();
+
+    fetch("/api/document/" + docId)
+      .then(res => {
+        if (!res.ok) throw new Error("Could not load document details.");
+        return res.json();
+      })
+      .then(data => {
+        populateModal(data);
+      })
+      .catch(err => {
+        loadingEl.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+      });
+  }
+
+  function populateModal(doc) {
+    loadingEl.classList.add("d-none");
+    detailsEl.classList.remove("d-none");
+
+    // Structured fields: merge base record with extra parsed fields
+    const extra = doc.extra_fields_parsed || {};
+    const merged = { ...extra };
+
+    // Document image / PDF preview handling
+    const filename = doc.file_path ? doc.file_path.split(/[\\/]/).pop() : "";
+    const originalFileUrl = filename ? "/uploads/" + filename : "";
+    const isPdf = doc.file_path && doc.file_path.toLowerCase().endsWith(".pdf");
+    const pdfPagesRow = document.getElementById("modalPdfPagesRow");
+
+    if (pdfPagesRow) {
+      pdfPagesRow.innerHTML = "";
+      pdfPagesRow.classList.add("d-none");
+    }
+
+    if (isPdf) {
+      const previewImgRel = extra["Preview Image"];
+      docImage.src = previewImgRel ? "/uploads/" + previewImgRel : originalFileUrl;
+      docLink.href = originalFileUrl;
+      docLink.innerHTML = '<i class="bi bi-file-earmark-pdf me-1 text-danger"></i> Open Original PDF';
+
+      // Multi-page selector if multiple pages exist
+      const pageList = extra["PDF Pages"];
+      if (Array.isArray(pageList) && pageList.length > 1 && pdfPagesRow) {
+        pdfPagesRow.classList.remove("d-none");
+        pageList.forEach((pgRel, idx) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `btn btn-xs ${idx === 0 ? "btn-primary-custom" : "btn-outline-custom"} py-1 px-2`;
+          btn.style.fontSize = "0.75rem";
+          btn.innerHTML = `<i class="bi bi-file-earmark-text me-1"></i>Page ${idx + 1}`;
+          btn.onclick = () => {
+            docImage.src = "/uploads/" + pgRel;
+            pdfPagesRow.querySelectorAll("button").forEach(b => b.className = "btn btn-xs btn-outline-custom py-1 px-2");
+            btn.className = "btn btn-xs btn-primary-custom py-1 px-2";
+          };
+          pdfPagesRow.appendChild(btn);
+        });
+      }
+    } else {
+      docImage.src = originalFileUrl;
+      docLink.href = originalFileUrl;
+      docLink.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i> Open Full Image';
+    }
+    
+    // Ensure core fields are populated
+    if (doc.citizen_name && !merged["Citizen Name"]) merged["Citizen Name"] = doc.citizen_name;
+    if (doc.certificate_number && !merged["Certificate Number"]) merged["Certificate Number"] = doc.certificate_number;
+    if (doc.aadhaar_number && !merged["Aadhaar Number"]) merged["Aadhaar Number"] = doc.aadhaar_number;
+    if (doc.dob && !merged["Date of Birth"]) merged["Date of Birth"] = doc.dob;
+    if (doc.district && !merged["District"]) merged["District"] = doc.district;
+    if (doc.issue_date && !merged["Issue Date"]) merged["Issue Date"] = doc.issue_date;
+
+    const displayList = [];
+    displayList.push({ label: "Document Type", value: doc.document_type, highlight: "badge-primary" });
+    
+    // Ordered priority list of fields
+    const priorityKeys = [
+      "Citizen Name", "Certificate Number", "Aadhaar Number", "Annual Income",
+      "Community", "Date of Birth", "Gender", "Father / Husband Name",
+      "Father's Name", "Mother's Name", "District", "Taluk", "Village",
+      "Place of Birth", "PIN Code", "Issue Date"
+    ];
+
+    priorityKeys.forEach(k => {
+      if (merged[k]) {
+        let hl = "";
+        if (k === "Annual Income") hl = "text-success fw-bold fs-6";
+        else if (k === "Certificate Number") hl = "text-info font-monospace";
+        else if (k === "Aadhaar Number") hl = "text-warning font-monospace";
+        else hl = "text-white";
+        displayList.push({ label: k, value: merged[k], highlight: hl });
+      }
+    });
+
+    // Any remaining extra keys
+    Object.keys(merged).forEach(k => {
+      if (!priorityKeys.includes(k) && !displayList.some(d => d.label === k)) {
+        displayList.push({ label: k, value: merged[k], highlight: "text-light" });
+      }
+    });
+
+    // Upload timestamp
+    displayList.push({ label: "Upload Timestamp", value: doc.upload_date, highlight: "text-muted" });
+
+    keyFieldsContainer.innerHTML = displayList.map(f => `
+      <div class="col-sm-6">
+        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+          <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">${f.label}</small>
+          <strong class="${f.highlight || 'text-white'}">
+            ${f.value}
+          </strong>
+        </div>
+      </div>
+    `).join("");
+
+    extraFieldsSection.classList.add("d-none");
+
+    // OCR Text
+    ocrTextBox.textContent = doc.ocr_text || "No OCR text detected.";
+  }
+
+  // Copy OCR text button
+  copyBtn.addEventListener("click", function() {
+    navigator.clipboard.writeText(ocrTextBox.textContent).then(() => {
+      const originalText = copyBtn.innerHTML;
+      copyBtn.innerHTML = '<i class="bi bi-check2 text-success"></i> Copied!';
+      setTimeout(() => { copyBtn.innerHTML = originalText; }, 2000);
+    });
+  });
+});
+</script>
+{% endblock %}

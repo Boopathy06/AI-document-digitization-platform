@@ -2,9 +2,10 @@
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping
+from typing import Generator, Mapping
 
 
 CREATE_DOCUMENTS_TABLE = """
@@ -23,6 +24,18 @@ CREATE TABLE IF NOT EXISTS government_documents (
     extra_fields TEXT NOT NULL DEFAULT '{}'
 )
 """
+
+
+@contextmanager
+def get_connection(database_path: str | Path) -> Generator[sqlite3.Connection, None, None]:
+    """Provide a transactional SQLite connection that reliably closes on exit."""
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        yield connection
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def initialize_database(database_path: str | Path) -> None:
@@ -91,17 +104,10 @@ def save_document(
                 json.dumps(dict(extracted_fields), ensure_ascii=False),
             ),
         )
-    return int(cursor.lastrowid)
+        return int(cursor.lastrowid)
 
 
 def count_documents(database_path: str | Path) -> int:
     """Return the number of saved records; useful for the future dashboard."""
     with get_connection(database_path) as connection:
         return int(connection.execute("SELECT COUNT(*) FROM government_documents").fetchone()[0])
-
-
-def get_connection(database_path: str | Path) -> sqlite3.Connection:
-    """Create a connection that exposes rows by column name."""
-    connection = sqlite3.connect(database_path)
-    connection.row_factory = sqlite3.Row
-    return connection

@@ -1,121 +1,295 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smart Document Digitization</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 720px; margin: 4rem auto; padding: 0 1rem; color: #1f2937; }
-    .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 1.5rem; }
-    input, button { margin-top: .75rem; }
-    button { background: #1d4ed8; border: 0; border-radius: 4px; color: white; cursor: pointer; padding: .65rem 1rem; }
-    .message { border-radius: 4px; margin: 1rem 0; padding: .75rem; }
-    .error { background: #fee2e2; color: #991b1b; }
-    .success { background: #dcfce7; color: #166534; }
-  </style>
-</head>
-<body>
-  <h1>Smart Document Digitization Platform</h1>
-  <p>Upload a scanned document to assess its quality and extract its text.</p>
+{% extends "base.html" %}
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <div class="message {{ category }}" role="alert">{{ message }}</div>
-    {% endfor %}
-  {% endwith %}
+{% block title %}Upload & Digitize | Smart Government Document Intelligence{% endblock %}
 
-  <section class="card">
-    <form action="{{ url_for('upload_document') }}" method="post" enctype="multipart/form-data">
-      <label for="document">Choose an image or PDF</label><br>
-      <input id="document" name="document" type="file" accept=".png,.jpg,.jpeg,.pdf" required>
-      <br>
-      <button type="submit">Upload document</button>
-    </form>
-    <p><small>Accepted formats: PNG, JPG, JPEG, PDF. Maximum size: 16 MB.</small></p>
-  </section>
+{% block content %}
+<div class="container py-4">
 
-  {% if uploaded_filename %}
-    <div class="message success" role="status">
-      <strong>Upload complete.</strong> {{ uploaded_filename }} has been assessed, processed by OCR, and classified.
+  <!-- Header Banner -->
+  <div class="text-center mb-4">
+    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill mb-2">
+      <i class="bi bi-shield-check me-1"></i> AI-Powered Government Document Ingestion
+    </span>
+    <h2 class="fw-bold text-white mb-2">Automated Document Digitization Pipeline</h2>
+    <p class="text-muted mx-auto" style="max-width: 650px;">
+      Upload scanned certificates or identity documents. The platform automatically assesses quality, enhances clarity, performs OCR, extracts structured fields, blocks duplicates, and stores records.
+    </p>
+  </div>
+
+  <!-- Pipeline Steps Indicator -->
+  <div class="pipeline-steps d-none d-md-flex px-4 mb-4">
+    <div class="step-item {% if uploaded_filename %}completed{% else %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-cloud-arrow-up"></i></div>
+      <span class="step-label">1. Upload</span>
     </div>
-    {% if saved_document_id %}
-      <div class="message success" role="status">Saved to the database as record #{{ saved_document_id }}.</div>
-    {% endif %}
-  {% endif %}
+    <div class="step-item {% if quality_report %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-eye"></i></div>
+      <span class="step-label">2. Quality Check</span>
+    </div>
+    <div class="step-item {% if enhancement %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-magic"></i></div>
+      <span class="step-label">3. Enhancement</span>
+    </div>
+    <div class="step-item {% if ocr_text is not none and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-cpu"></i></div>
+      <span class="step-label">4. EasyOCR</span>
+    </div>
+    <div class="step-item {% if extraction and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-card-checklist"></i></div>
+      <span class="step-label">5. Extraction</span>
+    </div>
+    <div class="step-item {% if duplicate_check and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-shield-lock"></i></div>
+      <span class="step-label">6. Deduplication</span>
+    </div>
+    <div class="step-item {% if saved_document_id %}completed{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-database-check"></i></div>
+      <span class="step-label">7. Database</span>
+    </div>
+  </div>
 
-  {% if quality_report %}
-    <section class="card">
-      <h2>Image quality assessment</h2>
-      <ul>
-        <li><strong>Blur:</strong> {{ quality_report.blur_status }} (score: {{ '%.2f'|format(quality_report.blur_score) }})</li>
-        <li><strong>Brightness:</strong> {{ quality_report.brightness_status }} (score: {{ '%.2f'|format(quality_report.brightness_score) }})</li>
-        <li><strong>Rotation:</strong> {{ quality_report.rotation_status }}</li>
-      </ul>
-    </section>
-  {% endif %}
+  <div class="row g-4 justify-content-center">
+    <!-- Upload Card -->
+    <div class="col-12 col-lg-8">
+      <div class="glass-card mb-4">
+        <form action="{{ url_for('upload_document') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+          <div class="border border-secondary border-opacity-50 rounded-3 p-4 text-center bg-dark bg-opacity-25" style="border-style: dashed !important;">
+            <i class="bi bi-file-earmark-arrow-up text-primary fs-1 mb-2 d-block"></i>
+            <h5 class="fw-bold text-white mb-1">Select or drop document here</h5>
+            <p class="text-muted small mb-3">
+              Accepted: <strong>PNG, JPG, JPEG, PDF</strong> &bull; Maximum file size: <strong>16 MB</strong>
+            </p>
+            <input type="file" id="document" name="document" accept=".png,.jpg,.jpeg,.pdf" class="d-none" required>
+            <label for="document" class="btn btn-outline-custom px-4 py-2 cursor-pointer">
+              <i class="bi bi-folder2-open me-2"></i> Browse Files
+            </label>
+            <div id="fileSelectedFeedback" class="mt-2 text-info small fw-semibold"></div>
+          </div>
 
-  {% if enhancement %}
-    <section class="card">
-      <h2>Image enhancement</h2>
-      <p>An enhanced copy was created for OCR. The original upload is unchanged.</p>
-      <ul>
-        {% for action in enhancement.actions %}
-          <li>{{ action }}</li>
-        {% endfor %}
-      </ul>
-      <p><a href="{{ url_for('enhanced_document', filename=enhancement.output_path.name) }}" target="_blank">Open enhanced image</a></p>
-    </section>
-  {% endif %}
+          <div class="mt-3 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+              <i class="bi bi-info-circle me-1"></i> Supports Tamil Nadu e-Sevai certificates, Aadhaar, and general IDs.
+            </span>
+            <button type="submit" class="btn btn-primary-custom px-4 py-2" id="submitBtn">
+              <i class="bi bi-lightning-charge-fill me-1"></i> Process Document
+            </button>
+          </div>
+        </form>
+      </div>
 
-  {% if uploaded_filename %}
-    <section class="card">
-      <h2>Document classification</h2>
-      <p><strong>Detected type:</strong> {{ classification.document_type }}</p>
-      {% if classification.matched_keyword %}
-        <p><small>Matched keyword: {{ classification.matched_keyword }}</small></p>
-      {% else %}
-        <p><small>No classification keyword was found. This document will use an extractor only after its rule is added.</small></p>
+      <!-- Processing Results (Shown after upload) -->
+      {% if uploaded_filename %}
+        <!-- Status summary banner -->
+        <div class="glass-card mb-4 border-start border-4 {% if duplicate_check.is_duplicate %}border-danger{% else %}border-success{% endif %}">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <div>
+              <h5 class="fw-bold text-white mb-1">
+                {% if duplicate_check.is_duplicate %}
+                  <i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>Duplicate Detected
+                {% else %}
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>Digitization Complete
+                {% endif %}
+              </h5>
+              <p class="text-muted mb-0 small">
+                File: <strong class="text-white">{{ uploaded_filename }}</strong> &bull; 
+                Type: <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25">{{ classification.document_type }}</span>
+              </p>
+            </div>
+            <div>
+              {% if saved_document_id %}
+                <div class="d-flex gap-2 align-items-center">
+                  <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 p-2">
+                    <i class="bi bi-database-check me-1"></i> Saved as Record #{{ saved_document_id }}
+                  </span>
+                  <a href="{{ url_for('dashboard_view') }}" class="btn btn-sm btn-primary-custom">
+                    <i class="bi bi-grid-1x2 me-1"></i> View in Dashboard
+                  </a>
+                </div>
+              {% else %}
+                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 p-2">
+                  <i class="bi bi-shield-x me-1"></i> Not Saved (Duplicate)
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Module 10: PDF Multi-Page Digitization Card -->
+        {% if pdf_result %}
+          <div class="glass-card mb-4 p-4 border border-info border-opacity-50">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h5 class="fw-bold text-white mb-1">
+                  <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>Module 10: Multi-Page PDF Digitization
+                </h5>
+                <p class="text-muted small mb-0">
+                  Rasterized <strong class="text-white">{{ pdf_result.total_pages }} page{% if pdf_result.total_pages > 1 %}s{% endif %}</strong> at 300 DPI for high-precision OCR and field extraction.
+                </p>
+              </div>
+              <div class="d-flex gap-2">
+                <a href="{{ url_for('uploaded_file', filename=saved_name) }}" target="_blank" class="btn btn-sm btn-outline-custom">
+                  <i class="bi bi-file-pdf me-1 text-danger"></i> View Original PDF
+                </a>
+              </div>
+            </div>
+
+            <!-- Page Gallery -->
+            <div class="row g-3">
+              {% for page in pdf_result.pages %}
+                <div class="col-6 col-md-4 col-lg-3">
+                  <div class="p-2 rounded bg-dark bg-opacity-75 border border-secondary border-opacity-25 text-center h-100 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center small text-muted mb-2 px-1">
+                      <span class="badge bg-secondary bg-opacity-50">Page {{ page.page_number }}</span>
+                      <span style="font-size: 0.7rem;">{{ page.width }}&times;{{ page.height }}</span>
+                    </div>
+                    <div class="bg-black rounded p-1 mb-2 d-flex align-items-center justify-content-center" style="height: 160px; overflow: hidden;">
+                      <a href="{{ url_for('uploaded_file', filename=page.relative_image_path) }}" target="_blank">
+                        <img src="{{ url_for('uploaded_file', filename=page.relative_image_path) }}" alt="Page {{ page.page_number }}" class="img-fluid rounded" style="max-height: 150px; object-fit: contain;">
+                      </a>
+                    </div>
+                    <a href="{{ url_for('uploaded_file', filename=page.relative_image_path) }}" target="_blank" class="btn btn-xs btn-outline-custom py-1" style="font-size: 0.75rem;">
+                      <i class="bi bi-zoom-in me-1"></i> Inspect Page {{ page.page_number }}
+                    </a>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="row g-3 mb-4">
+          <!-- Quality Report Card -->
+          {% if quality_report %}
+            <div class="col-12 col-md-6">
+              <div class="glass-card h-100 p-3">
+                <h6 class="fw-bold text-white mb-3">
+                  <i class="bi bi-camera me-2 text-info"></i>Module 3: Quality Assessment
+                </h6>
+                <div class="d-flex flex-column gap-2 small">
+                  <div class="d-flex justify-content-between p-2 rounded bg-dark bg-opacity-50">
+                    <span class="text-muted">Blur Detection</span>
+                    <span class="fw-bold {% if quality_report.blur_status == 'Clear' %}text-success{% else %}text-warning{% endif %}">
+                      {{ quality_report.blur_status }} ({{ '%.2f'|format(quality_report.blur_score) }})
+                    </span>
+                  </div>
+                  <div class="d-flex justify-content-between p-2 rounded bg-dark bg-opacity-50">
+                    <span class="text-muted">Brightness</span>
+                    <span class="fw-bold {% if quality_report.brightness_status == 'Good' %}text-success{% else %}text-warning{% endif %}">
+                      {{ quality_report.brightness_status }} ({{ '%.2f'|format(quality_report.brightness_score) }})
+                    </span>
+                  </div>
+                  <div class="d-flex justify-content-between p-2 rounded bg-dark bg-opacity-50">
+                    <span class="text-muted">Rotation / Skew</span>
+                    <span class="fw-bold {% if quality_report.rotation_status == 'Straight' %}text-success{% else %}text-info{% endif %}">
+                      {{ quality_report.rotation_status }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Enhancement Report Card -->
+          {% if enhancement %}
+            <div class="col-12 col-md-6">
+              <div class="glass-card h-100 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="fw-bold text-white mb-0">
+                    <i class="bi bi-magic me-2 text-primary"></i>Module 4: Enhancement
+                  </h6>
+                  <a href="{{ url_for('enhanced_document', filename=enhancement.output_path.name) }}" target="_blank" class="btn btn-sm btn-outline-custom py-0 px-2">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Preview
+                  </a>
+                </div>
+                <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+                  {% for action in enhancement.actions %}
+                    <li class="p-2 rounded bg-dark bg-opacity-50 d-flex align-items-center gap-2">
+                      <i class="bi bi-check2 text-success"></i>
+                      <span class="text-light">{{ action }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Extracted Fields Card -->
+        <div class="glass-card mb-4 p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-white mb-0">
+              <i class="bi bi-card-checklist me-2 text-success"></i>Module 5: Structured Fields
+            </h5>
+            <span class="badge bg-secondary">Extractor: {{ extraction.extractor_name }}</span>
+          </div>
+
+          {% if extraction.fields %}
+            <div class="row g-2">
+              {% for field_name, field_value in extraction.fields.items() %}
+                <div class="col-sm-6 col-md-4">
+                  <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">{{ field_name }}</small>
+                    <strong class="text-white">{{ field_value }}</strong>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-warning mb-0 small">
+              <i class="bi bi-info-circle me-1"></i> No structured fields could be reliably extracted for this document.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Deduplication Result Card -->
+        <div class="glass-card mb-4 p-4 border border-opacity-50 {% if duplicate_check.is_duplicate %}border-danger{% else %}border-success{% endif %}">
+          <h5 class="fw-bold text-white mb-2">
+            <i class="bi bi-shield-check me-2 text-warning"></i>Module 6: Duplicate Detection
+          </h5>
+          <p class="mb-0 {% if duplicate_check.is_duplicate %}text-danger fw-semibold{% else %}text-success{% endif %}">
+            {{ duplicate_check.reason }}
+          </p>
+        </div>
+
+        <!-- Raw OCR Text Card -->
+        {% if ocr_text is not none %}
+          <div class="glass-card mb-4 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="fw-bold text-white mb-0">
+                <i class="bi bi-terminal me-2 text-info"></i>Module 2: Complete OCR Text
+              </h5>
+              <button class="btn btn-sm btn-outline-custom" onclick="navigator.clipboard.writeText(document.getElementById('rawOcrOutput').innerText); this.innerHTML='<i class=\'bi bi-check2 text-success\'></i> Copied'; setTimeout(() => this.innerHTML='<i class=\'bi bi-clipboard\'></i> Copy', 2000)">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+            <div class="ocr-box" id="rawOcrOutput">{% if ocr_text %}{{ ocr_text }}{% else %}No text recognized.{% endif %}</div>
+          </div>
+        {% endif %}
+
       {% endif %}
-    </section>
-  {% endif %}
+    </div>
+  </div>
 
-  {% if uploaded_filename %}
-    <section class="card">
-      <h2>Document-specific fields</h2>
-      <p><small>Extractor used: {{ extraction.extractor_name }}</small></p>
-      {% if extraction.fields %}
-        <ul>
-          {% for field_name, field_value in extraction.fields.items() %}
-            <li><strong>{{ field_name }}:</strong> {{ field_value }}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>No reliable fields were found for this document. Check the OCR text below.</p>
-      {% endif %}
-    </section>
-  {% endif %}
+</div>
+{% endblock %}
 
-  {% if uploaded_filename %}
-    <section class="card">
-      <h2>Duplicate detection</h2>
-      {% if duplicate_check.is_duplicate %}
-        <p class="message error"><strong>Duplicate detected.</strong> {{ duplicate_check.reason }}</p>
-      {% else %}
-        <p class="message success"><strong>No exact duplicate detected.</strong> {{ duplicate_check.reason }}</p>
-      {% endif %}
-      <p><small>Aadhaar and certificate-number checks are performed against saved SQLite records before a new record is inserted.</small></p>
-    </section>
-  {% endif %}
+{% block scripts %}
+<script>
+  const fileInput = document.getElementById("document");
+  const feedback = document.getElementById("fileSelectedFeedback");
+  const form = document.getElementById("uploadForm");
+  const submitBtn = document.getElementById("submitBtn");
 
-  {% if ocr_text is not none and uploaded_filename %}
-    <section class="card">
-      <h2>Extracted text</h2>
-      {% if ocr_text %}
-        <pre>{{ ocr_text }}</pre>
-      {% else %}
-        <p>No text was detected in this document.</p>
-      {% endif %}
-    </section>
-  {% endif %}
-</body>
-</html>
+  fileInput.addEventListener("change", function() {
+    if (this.files && this.files[0]) {
+      const f = this.files[0];
+      feedback.textContent = `Selected: ${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`;
+    }
+  });
+
+  form.addEventListener("submit", function() {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Processing OCR & Fields...';
+  });
+</script>
+{% endblock %}

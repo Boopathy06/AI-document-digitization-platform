@@ -28,9 +28,7 @@ def extract_document_fields(document_type: str, ocr_text: str) -> ExtractionResu
 
     try:
         module = import_module(f"services.extractors.{extractor_name}")
-    except ModuleNotFoundError as error:
-        if error.name != f"services.extractors.{extractor_name}":
-            raise
+    except Exception:
         extractor_name = "generic"
         module = import_module("services.extractors.generic")
 

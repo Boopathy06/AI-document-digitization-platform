@@ -1,4 +1,8 @@
-"""OpenCV image enhancement service for Module 4."""
+"""OpenCV image enhancement service for Module 4.
+
+Optimized for high-accuracy OCR on government documents, certificates, and ID cards.
+Handles low-resolution scans, contrast lifting, sharp scaling, and rotation correction.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,8 +13,8 @@ import numpy as np
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
-TOO_DARK_THRESHOLD = 70.0
-TARGET_DARK_IMAGE_BRIGHTNESS = 135.0
+TOO_DARK_THRESHOLD = 85.0
+TARGET_DARK_IMAGE_BRIGHTNESS = 140.0
 
 
 class ImageEnhancementError(Exception):
@@ -30,7 +34,7 @@ def enhance_image(
     output_folder: str | Path,
     skew_angle: float | None = None,
 ) -> EnhancementResult:
-    """Create an OCR-ready enhanced copy without changing the original file."""
+    """Create an OCR-ready enhanced copy with optimal sharpness, contrast, and resolution."""
     source_path = Path(document_path)
     if source_path.suffix.lower() not in IMAGE_EXTENSIONS:
         raise ImageEnhancementError(
@@ -41,30 +45,51 @@ def enhance_image(
     if image is None:
         raise ImageEnhancementError("Unable to open this image for enhancement.")
 
+    height, width = image.shape[:2]
+    actions: list[str] = []
+
+    # 1. Convert to grayscale
     grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     original_brightness = float(grayscale.mean())
 
-    # A light denoise avoids smearing thin characters, which is especially
-    # important for screenshots and already-clear scanned documents.
-    denoised = cv2.fastNlMeansDenoising(grayscale, None, h=6, templateWindowSize=7, searchWindowSize=21)
-    enhanced = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8)).apply(denoised)
-    actions = ["Light denoising", "Local contrast enhanced"]
+    # 2. Intelligent Rescaling for Low-Resolution Documents:
+    # Full-page government documents at < 1200px have font sizes of only 5-8px.
+    # High-quality Lanczos-4 upscaling brings small text into the optimal EasyOCR size range.
+    if width < 1200 or height < 1500:
+        scale = max(2.0, min(3.0, 1800.0 / max(width, height)))
+        new_w = int(width * scale)
+        new_h = int(height * scale)
+        enhanced = cv2.resize(grayscale, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+        actions.append(f"Super-resolution upscaled {scale:.1f}x (INTER_LANCZOS4)")
+    else:
+        enhanced = grayscale.copy()
+        actions.append("Native high resolution preserved")
 
+    # 3. Controlled Denoising (Preserve Thin Letter Strokes)
+    # Heavy fastNlMeans denoise destroys fine lines in low-res scans.
+    # Bilateral filter preserves sharp character edges while flattening paper grain.
+    enhanced = cv2.bilateralFilter(enhanced, d=5, sigmaColor=25, sigmaSpace=25)
+    actions.append("Edge-preserving smoothing applied")
+
+    # 4. Adaptive Local Contrast Enhancement (CLAHE)
+    clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
+    enhanced = clahe.apply(enhanced)
+    actions.append("Local contrast enhanced (CLAHE)")
+
+    # 5. Text Edge Sharpening (Unsharp Masking)
+    gaussian = cv2.GaussianBlur(enhanced, (0, 0), sigmaX=1.5)
+    enhanced = cv2.addWeighted(enhanced, 1.4, gaussian, -0.4, 0)
+    actions.append("Text edge sharpening applied")
+
+    # 6. Brightness Correction for Dark Scans
     if original_brightness < TOO_DARK_THRESHOLD:
         enhanced = brighten_dark_image(enhanced, original_brightness)
-        # Otsu uses one image-wide threshold and avoids the halo artefacts that
-        # adaptive thresholding can create around screen text and table borders.
-        _, enhanced = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        actions.extend(["Brightness corrected", "Binary threshold applied for dark scan"])
-    else:
-        actions.append("Natural grayscale preserved (threshold not needed)")
+        actions.append("Dark scan brightness lifted")
+
+    # 7. Deskew / Rotation Correction
     if skew_angle is not None and abs(skew_angle) >= 1.0:
         enhanced = rotate_image(enhanced, -skew_angle)
         actions.append(f"Rotation corrected ({abs(skew_angle):.2f}°)")
-
-    enhanced, scale_factor = upscale_small_document(enhanced)
-    if scale_factor > 1:
-        actions.append(f"Upscaled {scale_factor}x for small-text OCR")
 
     destination_folder = Path(output_folder)
     destination_folder.mkdir(parents=True, exist_ok=True)
@@ -75,8 +100,8 @@ def enhance_image(
     return EnhancementResult(output_path=output_path, actions=tuple(actions))
 
 
-def rotate_image(image, angle: float):
-    """Rotate an image around its centre while retaining a white background."""
+def rotate_image(image: np.ndarray, angle: float) -> np.ndarray:
+    """Rotate an image around its centre while retaining a clean white background."""
     height, width = image.shape[:2]
     matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
     return cv2.warpAffine(
@@ -89,18 +114,10 @@ def rotate_image(image, angle: float):
     )
 
 
-def brighten_dark_image(image, current_brightness: float):
-    """Use gamma correction to lift a dark scan before thresholding it."""
+def brighten_dark_image(image: np.ndarray, current_brightness: float) -> np.ndarray:
+    """Use gamma correction to lift a dark scan without clipping highlights."""
     safe_brightness = max(current_brightness, 1.0)
     gamma = np.log(TARGET_DARK_IMAGE_BRIGHTNESS / 255) / np.log(safe_brightness / 255)
-    gamma = float(np.clip(gamma, 0.30, 1.0))
+    gamma = float(np.clip(gamma, 0.35, 0.95))
     lookup_table = np.array([((value / 255.0) ** gamma) * 255 for value in range(256)]).astype("uint8")
     return cv2.LUT(image, lookup_table)
-
-
-def upscale_small_document(image):
-    """Upscale small scans so OCR can read fine print more reliably."""
-    height, width = image.shape[:2]
-    if max(height, width) >= 1600:
-        return image, 1
-    return cv2.resize(image, (width * 2, height * 2), interpolation=cv2.INTER_CUBIC), 2

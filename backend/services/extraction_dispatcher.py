@@ -37,4 +37,18 @@ def extract_document_fields(document_type: str, ocr_text: str) -> ExtractionResu
 
 def document_type_to_module_name(document_type: str) -> str:
     """Convert a display name such as `Birth Certificate` to a module name."""
-    return "_".join(document_type.lower().split())
+    if hasattr(document_type, "document_type"):
+        document_type = getattr(document_type, "document_type")
+    norm = (str(document_type) if document_type else "").strip()
+    # Explicit aliases for standard document types
+    mapping = {
+        "Aadhaar Card": "aadhaar",
+        "Aadhaar": "aadhaar",
+        "Birth Certificate": "birth_certificate",
+        "Community Certificate": "community_certificate",
+        "Income Certificate": "income_certificate",
+        "Student Permission Form": "generic",
+    }
+    if norm in mapping:
+        return mapping[norm]
+    return "_".join(norm.lower().split())

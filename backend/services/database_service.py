@@ -72,10 +72,18 @@ def save_document(
 ) -> int:
     """Store one non-duplicate document and return its database ID."""
     common_fields = {
-        "citizen_name": extracted_fields.get("Citizen Name"),
-        "certificate_number": extracted_fields.get("Certificate Number"),
+        "citizen_name": (
+            extracted_fields.get("Citizen Name")
+            or extracted_fields.get("Name")
+            or extracted_fields.get("Applicant Name")
+            or extracted_fields.get("Child Name")
+        ),
+        "certificate_number": (
+            extracted_fields.get("Certificate Number")
+            or extracted_fields.get("Registration Number")
+        ),
         "aadhaar_number": extracted_fields.get("Aadhaar Number"),
-        "dob": extracted_fields.get("Date of Birth"),
+        "dob": extracted_fields.get("Date of Birth") or extracted_fields.get("DOB"),
         "district": extracted_fields.get("District"),
         "issue_date": extracted_fields.get("Issue Date"),
     }

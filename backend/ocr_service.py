@@ -27,11 +27,18 @@ class OCRProcessingError(Exception):
 
 @lru_cache(maxsize=1)
 def get_paddle_ocr():
-    """Initialize PaddleOCR engine with Windows shm.dll safety."""
+    """Initialize PaddleOCR engine with Windows shm.dll safety and CPU batch efficiency."""
     try:
         import torch  # Prevents Windows PyTorch / Paddle OpenMP conflict
         from paddleocr import PaddleOCR
-        return PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False, show_log=False)
+        return PaddleOCR(
+            use_angle_cls=True,
+            lang="en",
+            use_gpu=False,
+            show_log=False,
+            det_limit_side_len=1600,
+            rec_batch_num=16,
+        )
     except Exception:
         return None
 
@@ -73,12 +80,15 @@ def extract_text(document_path: str | Path) -> str:
         try:
             from pdf_service import render_pdf_to_images
             temp_out = path.parent / "pdf_pages" / path.stem
-            pdf_result = render_pdf_to_images(path, temp_out, dpi=300)
+            pdf_result = render_pdf_to_images(path, temp_out, dpi=200)
             page_text_blocks: List[str] = []
             for page in pdf_result.pages:
-                text_piece = extract_text(page.image_path)
-                if not text_piece and page.embedded_text:
+                if page.embedded_text and len(page.embedded_text.strip()) >= 50:
                     text_piece = page.embedded_text
+                else:
+                    text_piece = extract_text(page.image_path)
+                    if not text_piece and page.embedded_text:
+                        text_piece = page.embedded_text
                 if text_piece:
                     page_text_blocks.append(text_piece)
 

@@ -37,18 +37,16 @@ def extract_district(text: str) -> Optional[str]:
     m2 = re.search(r"\b([A-Za-z]{4,15})\s+District\b", text, re.I)
     if m2:
         candidate = m2.group(1).capitalize()
-        close = difflib.get_close_matches(candidate, TN_DISTRICTS, n=1, cutoff=0.6)
+        close = difflib.get_close_matches(candidate, TN_DISTRICTS, n=1, cutoff=0.65)
         if close:
             return close[0]
-        if candidate.lower() not in {"the", "and", "town", "taluk", "village"}:
-            return candidate
 
-    # 3. Check for any known Tamil Nadu district in text
+    # 3. Check for direct match of any known Tamil Nadu district in text
     for d in TN_DISTRICTS:
         if re.search(r"\b" + re.escape(d) + r"\b", text, re.I):
             return d
 
-    # 4. Fuzzy search across full words in text for district names
+    # 4. Fuzzy search across full words in text for district names (high cutoff)
     words = re.findall(r"\b[A-Za-z]{4,15}\b", text)
     for word in words:
         close = difflib.get_close_matches(word.capitalize(), TN_DISTRICTS, n=1, cutoff=0.85)
@@ -91,14 +89,28 @@ def extract_certificate_number(text: str) -> Optional[str]:
 
 
 def extract_aadhaar_number(text: str) -> Optional[str]:
-    """Extract a valid 12-digit Indian Aadhaar number."""
-    m = re.search(r"\b([2-9]\d{3}\s\d{4}\s\d{4})\b", text)
-    if m:
-        return m.group(1)
-    m2 = re.search(r"\b([2-9]\d{11})\b", text)
-    if m2:
-        val = m2.group(1)
-        return f"{val[:4]} {val[4:8]} {val[8:]}"
+    """Extract a valid 12-digit Indian Aadhaar number, avoiding 16-digit VIDs."""
+    # Priority 1: Line following 'Your Aadhaar No'
+    m_lbl = re.search(r"Your\s+Aadhaar\s+No[^\d\n]*\n\s*([2-9]\d{3}\s?\d{4}\s?\d{4})", text, re.I)
+    if m_lbl:
+        clean = re.sub(r"\s+", "", m_lbl.group(1))
+        if len(clean) == 12:
+            return f"{clean[:4]} {clean[4:8]} {clean[8:]}"
+
+    # Priority 2: 12-digit formatted number NOT preceded by VID and NOT part of 16 digits
+    matches = re.findall(r"(?<!\d)(?<!VID\s)(?<!VID:\s)\b([2-9]\d{3}\s\d{4}\s\d{4})(?!\s\d{4})\b", text)
+    if matches:
+        return matches[0]
+
+    # Priority 3: Contiguous 12 digits NOT part of VID
+    vid_match = re.search(r"\bVID\s*[:\-]?\s*(\d{4}\s\d{4}\s\d{4}\s\d{4})\b", text, re.I)
+    vid_digits = vid_match.group(1).replace(" ", "") if vid_match else ""
+
+    matches2 = re.findall(r"(?<!\d)([2-9]\d{11})(?!\d)", text)
+    for m in matches2:
+        if not vid_digits.startswith(m):
+            return f"{m[:4]} {m[4:8]} {m[8:]}"
+
     return None
 
 

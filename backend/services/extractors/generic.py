@@ -33,9 +33,11 @@ def extract_fields(ocr_text: str) -> Dict[str, str]:
         add_if_found(fields, "Citizen Name", clean_person_name(m_name.group(1)))
 
     # 4. Roll / Registration Number
-    m_roll = re.search(r"(?:Roll|Reg(?:istration)?)\s*(?:No|Number|#)?\s*[:\-]?\s*([A-Za-z0-9]+)", text, re.I)
+    m_roll = re.search(r"\b(?:Roll\s*(?:No|Number|#)?|Reg(?:istration)?\s*(?:No|Number|#))\s*[:\-]?\s*([A-Za-z0-9\-]+)", text, re.I)
     if m_roll:
-        add_if_found(fields, "Roll Number", m_roll.group(1).upper())
+        cand_roll = m_roll.group(1).upper()
+        if not any(w in cand_roll.lower() for w in ["submitted", "holder", "number", "card", "aadhaar", "dob"]):
+            add_if_found(fields, "Roll Number", cand_roll)
 
     # 5. District
     district = extract_district(text)

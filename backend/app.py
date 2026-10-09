@@ -212,10 +212,13 @@ def create_app() -> Flask:
             if pdf_result and pdf_result.pages:
                 page_texts = []
                 for idx, page in enumerate(pdf_result.pages):
-                    img_to_ocr = enhancement.output_path if (idx == 0 and enhancement) else page.image_path
-                    pt = extract_text(img_to_ocr)
-                    if not pt and page.embedded_text:
+                    if page.embedded_text and len(page.embedded_text.strip()) >= 50:
                         pt = page.embedded_text
+                    else:
+                        img_to_ocr = enhancement.output_path if (idx == 0 and enhancement) else page.image_path
+                        pt = extract_text(img_to_ocr)
+                        if not pt and page.embedded_text:
+                            pt = page.embedded_text
                     if pt:
                         page_texts.append(pt)
 

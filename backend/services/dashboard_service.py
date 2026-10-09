@@ -154,14 +154,31 @@ def get_all_documents(
 
         sql = f"""
             SELECT id, document_type, citizen_name, certificate_number, 
-                   aadhaar_number, dob, district, issue_date, upload_date, file_path
+                   aadhaar_number, dob, district, issue_date, upload_date, file_path, extra_fields
             FROM government_documents
             {where_clause}
             ORDER BY id DESC
             LIMIT ? OFFSET ?
         """
         rows = connection.execute(sql, params + [limit, offset]).fetchall()
-        documents = [dict(row) for row in rows]
+        documents = []
+        for row in rows:
+            doc_dict = dict(row)
+            if (not doc_dict.get("citizen_name") or not doc_dict.get("district")) and doc_dict.get("extra_fields"):
+                try:
+                    ef = json.loads(doc_dict["extra_fields"])
+                    if not doc_dict.get("citizen_name"):
+                        doc_dict["citizen_name"] = (
+                            ef.get("Citizen Name")
+                            or ef.get("Applicant Name")
+                            or ef.get("Name")
+                            or ef.get("Child Name")
+                        )
+                    if not doc_dict.get("district") and ef.get("District"):
+                        doc_dict["district"] = ef.get("District")
+                except Exception:
+                    pass
+            documents.append(doc_dict)
 
     return documents, total_count
 

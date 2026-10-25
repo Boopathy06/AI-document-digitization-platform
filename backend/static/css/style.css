@@ -128,41 +128,56 @@ body {
 /* Tables */
 .custom-table-container {
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto !important;
+  overflow-y: hidden;
   border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .custom-table {
   width: 100%;
   margin-bottom: 0;
-  color: var(--text-main);
-  background-color: var(--bg-card);
+  color: var(--text-main) !important;
+  background-color: var(--bg-card) !important;
+  --bs-table-bg: #131b2e !important;
+  --bs-table-color: #f1f5f9 !important;
+  --bs-table-hover-bg: #19233c !important;
+  --bs-table-hover-color: #ffffff !important;
+  border-collapse: separate;
+}
+
+.custom-table > :not(caption) > * > * {
+  background-color: #131b2e !important;
+  color: #f1f5f9 !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
 .custom-table th {
-  background-color: #0e1526;
-  color: var(--text-muted);
+  background-color: #0e1526 !important;
+  color: var(--text-muted) !important;
   font-weight: 600;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border-color) !important;
+  white-space: nowrap;
 }
 
 .custom-table td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.85rem 0.75rem;
   vertical-align: middle;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
+  background-color: #131b2e !important;
 }
 
 .custom-table tbody tr {
   transition: background-color 0.15s ease;
 }
 
-.custom-table tbody tr:hover {
-  background-color: var(--bg-card-hover);
+.custom-table tbody tr:hover td {
+  background-color: #19233c !important;
 }
 
 /* Badges */
@@ -339,3 +354,141 @@ footer {
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+/* High-Contrast Citizen Name Highlight (Solves unreadable font color) */
+.citizen-name-cell {
+  vertical-align: middle !important;
+}
+
+.citizen-name-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.citizen-name-text {
+  color: #38bdf8 !important; /* Radiant vivid sky-blue: 100% visible across dark and light palettes */
+  font-weight: 700 !important;
+  font-size: 0.96rem !important;
+  letter-spacing: 0.25px;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+.citizen-not-extracted {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-style: italic;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+}
+
+/* Quality Score & Status Pills */
+.score-badge-good {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-weight: 700;
+}
+
+.score-badge-review {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  font-weight: 700;
+}
+
+.score-badge-manual {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-weight: 700;
+}
+
+/* Comparison side-by-side card */
+.comparison-card {
+  background: #0d1322;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.field-warning-box {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: #fca5a5;
+}
+
+.field-warning-box.warning-yellow {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fde68a;
+}
+
+/* Verification Symbols & Badges */
+.verified-symbol-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-decoration: none !important;
+  vertical-align: middle;
+}
+
+.verified-symbol-badge.badge-manual-verified {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+.verified-symbol-badge.badge-auto-verified {
+  background: rgba(6, 182, 212, 0.2) !important;
+  color: #22d3ee !important;
+  border: 1px solid rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+.verified-symbol-badge.badge-unverified {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+  border: 1px dashed rgba(245, 158, 11, 0.5) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.verified-symbol-badge.badge-unverified:hover {
+  background: rgba(245, 158, 11, 0.35) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.district-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #222f4c;
+  color: #e2e8f0 !important;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.2px;
+}
+

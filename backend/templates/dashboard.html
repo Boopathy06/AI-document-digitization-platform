@@ -104,7 +104,7 @@
   <!-- Main Content: Document Records & Side Audit Log -->
   <div class="row g-4">
     <!-- Documents Table -->
-    <div class="col-12 col-lg-8">
+    <div class="col-12 col-xxl-9 col-xl-8 col-lg-12">
       <div class="glass-card">
         <!-- Search & Filter Form -->
         <form method="get" action="{{ url_for('dashboard_view') }}" class="mb-3">
@@ -155,16 +155,19 @@
               <tr>
                 <th>ID</th>
                 <th>Type</th>
-                <th>Citizen Name</th>
+                <th>Citizen Name & Verification</th>
                 <th>Identifier</th>
                 <th>District</th>
+                <th>Status</th>
+                <th>Quality</th>
                 <th>Uploaded</th>
-                <th class="text-end">Action</th>
+                <th class="text-end" style="min-width: 220px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               {% if documents %}
                 {% for doc in documents %}
+                  {% set v_status = doc.verification_status or 'needs_review' %}
                   <tr>
                     <td class="fw-bold text-muted">#{{ doc.id }}</td>
                     <td>
@@ -185,21 +188,90 @@
                         </span>
                       {% endif %}
                     </td>
-                    <td class="fw-semibold text-white">
-                      {{ doc.citizen_name or '<span class="text-muted fst-italic">Not extracted</span>'|safe }}
+                    <td class="citizen-name-cell">
+                      {% if doc.citizen_name %}
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="citizen-name-badge">
+                            <i class="bi bi-person-fill text-info me-1"></i>
+                            <span class="citizen-name-text">{{ doc.citizen_name }}</span>
+                          </span>
+                          {% if v_status in ['reviewed', 'manually_verified'] %}
+                            <span class="verified-symbol-badge badge-manual-verified" title="Citizen Identity Officially Manually Verified by Officer">
+                              <i class="bi bi-patch-check-fill text-success fs-6"></i> Verified
+                            </span>
+                          {% elif v_status == 'auto_verified' %}
+                            <span class="verified-symbol-badge badge-auto-verified" title="System Auto-Verified Citizen Details">
+                              <i class="bi bi-shield-fill-check text-info fs-6"></i> Auto-Verified
+                            </span>
+                          {% else %}
+                            <button type="button" class="verified-symbol-badge badge-unverified review-btn border-0" 
+                                    data-doc-id="{{ doc.id }}" 
+                                    title="Unverified - Click to launch Manual Verification">
+                              <i class="bi bi-shield-exclamation text-warning fs-6"></i> Unverified
+                            </button>
+                          {% endif %}
+                        </div>
+                      {% else %}
+                        <span class="citizen-not-extracted">
+                          <i class="bi bi-exclamation-triangle me-1"></i>Not extracted
+                        </span>
+                      {% endif %}
                     </td>
                     <td>
                       {% if doc.certificate_number %}
-                        <code class="text-info">{{ doc.certificate_number }}</code>
+                        <code class="text-info fw-bold">{{ doc.certificate_number }}</code>
                       {% elif doc.aadhaar_number %}
-                        <code class="text-warning">{{ doc.aadhaar_number }}</code>
+                        <code class="text-warning fw-bold">{{ doc.aadhaar_number }}</code>
                       {% else %}
                         <span class="text-muted small">-</span>
                       {% endif %}
                     </td>
                     <td>
                       {% if doc.district %}
-                        <span class="text-light"><i class="bi bi-geo-alt me-1 text-muted"></i>{{ doc.district }}</span>
+                        <span class="district-badge">
+                          <i class="bi bi-geo-alt-fill text-info"></i> {{ doc.district }}
+                        </span>
+                      {% else %}
+                        <span class="text-muted small">-</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if v_status in ['reviewed', 'manually_verified'] %}
+                        <span class="badge bg-success text-white py-1 px-2 shadow-sm fs-7" title="Manually verified and certified by officer">
+                          <i class="bi bi-patch-check-fill me-1"></i>Manually Verified
+                        </span>
+                      {% elif v_status == 'auto_verified' %}
+                        <span class="badge bg-info text-dark fw-bold py-1 px-2 shadow-sm fs-7" title="Automated verification passed">
+                          <i class="bi bi-shield-fill-check me-1"></i>Auto-Verified
+                        </span>
+                      {% elif v_status == 'needs_correction' %}
+                        <span class="badge bg-danger text-white py-1 px-2 shadow-sm fs-7" title="Field corrections required">
+                          <i class="bi bi-exclamation-triangle-fill me-1"></i>Correction Needed
+                        </span>
+                      {% else %}
+                        <button type="button" class="btn btn-xs btn-outline-warning review-btn py-1 px-2 text-warning fw-semibold shadow-sm" 
+                                data-doc-id="{{ doc.id }}" 
+                                title="Click to manually verify citizen details">
+                          <i class="bi bi-hourglass-split me-1"></i>Pending Review
+                        </button>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if doc.quality_score is not none %}
+                        {% set q_val = doc.quality_score|round|int %}
+                        {% if q_val >= 85 %}
+                          <span class="badge score-badge-good" title="Good technical quality and extraction completeness">
+                            <i class="bi bi-award me-1"></i>{{ q_val }}
+                          </span>
+                        {% elif q_val >= 65 %}
+                          <span class="badge score-badge-review" title="Review recommended">
+                            {{ q_val }}
+                          </span>
+                        {% else %}
+                          <span class="badge score-badge-manual" title="Manual review strongly recommended">
+                            {{ q_val }}
+                          </span>
+                        {% endif %}
                       {% else %}
                         <span class="text-muted small">-</span>
                       {% endif %}
@@ -207,15 +279,26 @@
                     <td class="text-muted small">
                       {{ doc.upload_date[:10] if doc.upload_date else '-' }}
                     </td>
-                    <td class="text-end">
-                      <button class="btn btn-sm btn-outline-info inspect-btn" 
+                    <td class="text-end text-nowrap" style="min-width: 220px;">
+                      <button class="btn btn-xs btn-success review-btn py-1 px-2 fw-bold text-white shadow-sm" 
+                              data-doc-id="{{ doc.id }}" 
+                              title="Manual Verification of Citizen Details & Fields">
+                        <i class="bi bi-shield-check me-1"></i> Manual Verify
+                      </button>
+                      <button class="btn btn-xs btn-outline-info inspect-btn py-1 px-2 ms-1" 
                               data-doc-id="{{ doc.id }}" 
                               title="Inspect Extracted Fields & Image">
-                        <i class="bi bi-eye"></i> Inspect
+                        <i class="bi bi-eye me-1"></i> View
+                      </button>
+                      <button class="btn btn-xs btn-outline-warning duplicate-btn py-1 px-2 ms-1" 
+                              data-doc-id="{{ doc.id }}" 
+                              title="Module 12: Advanced Duplicate Detection Analysis">
+                        <i class="bi bi-shield-shaded me-1"></i> Dupes
                       </button>
                     </td>
                   </tr>
                 {% endfor %}
+
               {% else %}
                 <tr>
                   <td colspan="7" class="text-center py-5">
@@ -245,7 +328,7 @@
     </div>
 
     <!-- Side Panel: Duplicate Interceptions & Activity -->
-    <div class="col-12 col-lg-4">
+    <div class="col-12 col-xxl-3 col-xl-4 col-lg-12">
       <!-- Duplicate Prevention Audit -->
       <div class="glass-card mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -339,59 +422,294 @@
 
         <!-- Detail content -->
         <div id="modalDetails" class="d-none">
+          <ul class="nav nav-pills mb-3 gap-2" id="inspectTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active btn-sm" id="tab-fields-btn" data-bs-toggle="pill" data-bs-target="#tab-fields" type="button" role="tab">
+                <i class="bi bi-card-checklist me-1"></i> Extracted Fields & Image
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link btn-sm" id="tab-consistency-btn" data-bs-toggle="pill" data-bs-target="#tab-consistency" type="button" role="tab">
+                <i class="bi bi-check2-circle me-1"></i> Consistency Verification (M13)
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link btn-sm" id="tab-quality-btn" data-bs-toggle="pill" data-bs-target="#tab-quality" type="button" role="tab">
+                <i class="bi bi-speedometer2 me-1"></i> Technical Quality Score (M14)
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="inspectTabsContent">
+            <!-- TAB 1: Extracted Fields & Image -->
+            <div class="tab-pane fade show active" id="tab-fields" role="tabpanel">
+              <div class="row g-4">
+                <!-- Left: Document Image Preview -->
+                <div class="col-12 col-md-5">
+                  <div class="glass-card p-3 h-100 d-flex flex-column">
+                    <h6 class="fw-bold mb-2 text-white">
+                      <i class="bi bi-image me-1 text-info"></i> Document Preview
+                    </h6>
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-black rounded p-2 overflow-hidden" style="min-height: 320px;">
+                      <img id="modalDocImage" src="" alt="Document Preview" class="img-fluid rounded" style="max-height: 480px; object-fit: contain;">
+                    </div>
+                    <div class="mt-2 text-center">
+                      <div id="modalPdfPagesRow" class="d-flex flex-wrap gap-1 justify-content-center mb-2 d-none"></div>
+                      <a id="modalDocLink" href="#" target="_blank" class="btn btn-sm btn-outline-custom">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Open Full Image / PDF
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: Extracted Structured Fields & OCR -->
+                <div class="col-12 col-md-7">
+                  <div class="glass-card mb-3 p-3">
+                    <h6 class="fw-bold mb-3 text-white">
+                      <i class="bi bi-card-checklist me-1 text-success"></i> Structured Extracted Fields
+                    </h6>
+                    <div class="row g-2" id="modalKeyFieldsContainer"></div>
+                  </div>
+
+                  <div class="glass-card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h6 class="fw-bold mb-0 text-white">
+                        <i class="bi bi-terminal me-1 text-primary"></i> Extracted OCR Text
+                      </h6>
+                      <button class="btn btn-sm btn-outline-custom py-0 px-2" id="copyOcrBtn" title="Copy OCR Text">
+                        <i class="bi bi-clipboard"></i> Copy
+                      </button>
+                    </div>
+                    <div class="ocr-box" id="modalOcrText">No OCR text detected.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: Consistency Verification (Module 13) -->
+            <div class="tab-pane fade" id="tab-consistency" role="tabpanel">
+              <div class="glass-card p-3 mb-3" id="consistencySummaryBanner">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="glass-card p-3 mb-3">
+                <h6 class="fw-bold text-white mb-2">Field-Level Completeness & Format Results</h6>
+                <div class="table-responsive">
+                  <table class="table custom-table table-sm" id="consistencyFieldsTable">
+                    <thead>
+                      <tr>
+                        <th>Field Name</th>
+                        <th>Extracted Value</th>
+                        <th>Status</th>
+                        <th>Explanation & Suggested Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="consistencyFieldsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="glass-card p-3">
+                <h6 class="fw-bold text-white mb-2">Logical Relationship & Chronology Checks</h6>
+                <div id="logicalChecksList" class="d-flex flex-column gap-2"></div>
+              </div>
+            </div>
+
+            <!-- TAB 3: Quality and Completeness Score (Module 14) -->
+            <div class="tab-pane fade" id="tab-quality" role="tabpanel">
+              <div class="glass-card p-4 mb-3" id="qualityOverviewCard">
+                <!-- Dynamically populated gauge and breakdown -->
+              </div>
+              <div class="glass-card p-3">
+                <h6 class="fw-bold text-white mb-2">Score Reduction Factors & Recommendations</h6>
+                <div id="qualityFactorsList" class="d-flex flex-column gap-2 mb-3"></div>
+                <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 text-muted small">
+                  <i class="bi bi-info-circle me-1"></i>
+                  <strong>Disclaimer:</strong> This is a technical document quality and extraction completeness score, not a probability of authenticity, fraud, or legal validity.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer modal-footer-custom d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success" id="inspectManualVerifyBtn">
+          <i class="bi bi-shield-check me-1"></i> Open Manual Verification
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Module 11: Manual Verification & Field Correction Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content modal-content-custom">
+      <div class="modal-header modal-header-custom border-bottom border-secondary border-opacity-25">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-shield-check text-success fs-3"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0 text-white" id="reviewModalLabel">Manual Verification of Citizen Details</h5>
+            <span class="text-muted small" id="reviewSubHeader">Verify citizen identity, review/correct extracted certificate fields, and approve verification sign-off</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div id="reviewLoading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="text-muted mt-2">Loading verification workspace and document data...</p>
+        </div>
+
+        <div id="reviewContent" class="d-none">
+          <div class="alert alert-dark border border-secondary d-flex justify-content-between align-items-center mb-3 p-3">
+            <div>
+              <span class="text-muted small text-uppercase fw-bold d-block">Current Verification Status</span>
+              <strong class="fs-5 text-white" id="reviewOverallStatusText">Pending Verification</strong>
+            </div>
+            <div id="reviewStatusPill"></div>
+          </div>
+
           <div class="row g-4">
-            <!-- Left: Document Image Preview -->
-            <div class="col-12 col-md-5">
+            <!-- Left: Document Preview -->
+            <div class="col-12 col-lg-5">
               <div class="glass-card p-3 h-100 d-flex flex-column">
-                <h6 class="fw-bold mb-2 text-white">
-                  <i class="bi bi-image me-1 text-info"></i> Document Preview
-                </h6>
-                <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-black rounded p-2 overflow-hidden" style="min-height: 320px;">
-                  <img id="modalDocImage" src="" alt="Document Preview" class="img-fluid rounded" style="max-height: 480px; object-fit: contain;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold mb-0 text-white"><i class="bi bi-image me-1 text-info"></i> Original Document Scan</h6>
+                  <span class="badge bg-secondary">Unmodified Scan</span>
+                </div>
+                <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-black rounded p-2 overflow-hidden" style="min-height: 380px;">
+                  <img id="reviewDocImage" src="" alt="Scan Preview" class="img-fluid rounded" style="max-height: 500px; object-fit: contain;">
                 </div>
                 <div class="mt-2 text-center">
-                  <div id="modalPdfPagesRow" class="d-flex flex-wrap gap-1 justify-content-center mb-2 d-none"></div>
-                  <a id="modalDocLink" href="#" target="_blank" class="btn btn-sm btn-outline-custom">
-                    <i class="bi bi-box-arrow-up-right me-1"></i> Open Full Image
+                  <a id="reviewDocLink" href="#" target="_blank" class="btn btn-sm btn-outline-custom">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open Full Document in New Tab
                   </a>
                 </div>
               </div>
             </div>
 
-            <!-- Right: Extracted Structured Fields & OCR -->
-            <div class="col-12 col-md-7">
-              <!-- Key Fields Card -->
-              <div class="glass-card mb-3 p-3">
-                <h6 class="fw-bold mb-3 text-white">
-                  <i class="bi bi-card-checklist me-1 text-success"></i> Structured Extracted Fields
-                </h6>
-                <div class="row g-2" id="modalKeyFieldsContainer">
-                  <!-- Injected via JS -->
+            <!-- Right: Editable Form & Explanations -->
+            <div class="col-12 col-lg-7">
+              <form id="reviewCorrectionForm">
+                <input type="hidden" id="reviewDocId" value="">
+                <div class="glass-card p-3 mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-white mb-0"><i class="bi bi-person-lines-fill me-1 text-info"></i> Citizen Details & Certificate Fields</h6>
+                    <button type="button" class="btn btn-xs btn-outline-success py-1 px-2" id="quickVerifyAllBtn" title="Mark all valid fields as approved">
+                      <i class="bi bi-check2-all me-1"></i> Quick Approve All
+                    </button>
+                  </div>
+                  <p class="text-muted small mb-3">Inspect each extracted citizen detail below against the original scan. You can correct any inaccurate text or approve valid fields.</p>
+                  <div id="reviewFieldsContainer" class="d-flex flex-column gap-3"></div>
+                </div>
+
+                <div class="glass-card p-3 mb-3">
+                  <h6 class="fw-bold text-white small text-uppercase mb-2"><i class="bi bi-person-badge me-1 text-warning"></i> Manual Verification Sign-off</h6>
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted">Verifying Officer</label>
+                      <input type="text" class="form-control custom-input" id="reviewAuthorInput" value="Officer In-Charge">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted">Verification Notes / Remarks</label>
+                      <input type="text" class="form-control custom-input" id="reviewNotesInput" placeholder="e.g. Verified details against official state gazette/scan">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="glass-card p-3">
+                  <h6 class="fw-bold text-white small text-uppercase mb-2"><i class="bi bi-clock-history me-1 text-warning"></i> Verification Audit History</h6>
+                  <div id="reviewAuditLogContainer">
+                    <p class="text-muted small mb-0">No past corrections logged yet.</p>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer modal-footer-custom d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-info" id="reviewRevalidateBtn">
+            <i class="bi bi-arrow-repeat me-1"></i> Revalidate Rules
+          </button>
+          <button type="button" class="btn btn-primary-custom" id="reviewSaveBtn">
+            <i class="bi bi-save me-1"></i> Save Changes
+          </button>
+          <button type="button" class="btn btn-success fw-bold px-3" id="reviewMarkReviewedBtn">
+            <i class="bi bi-shield-fill-check me-1"></i> Certify & Complete Manual Verification
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Module 12: Advanced Duplicate Detection Modal -->
+<div class="modal fade" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content modal-content-custom">
+      <div class="modal-header modal-header-custom border-bottom border-secondary border-opacity-25">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-shield-shaded text-warning fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="duplicatesModalLabel">Module 12: Advanced Duplicate Detection</h5>
+            <span class="text-muted small" id="duplicatesSubHeader">Multi-field identifier and RapidFuzz personal record comparison</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div id="dupLoading" class="text-center py-5">
+          <div class="spinner-border text-warning" role="status"></div>
+          <p class="text-muted mt-2">Checking database records with fuzzy matching...</p>
+        </div>
+
+        <div id="dupContent" class="d-none">
+          <div class="alert p-3 mb-4" id="dupBanner" role="alert">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold mb-1" id="dupBannerTitle">Deduplication Result</h6>
+                <p class="mb-0 small" id="dupBannerDesc"></p>
+              </div>
+              <span class="badge fs-6" id="dupBannerBadge"></span>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-white mb-2">Matching Stored Records</h6>
+          <div id="dupMatchesContainer" class="d-flex flex-column gap-3 mb-4"></div>
+
+          <!-- Side-by-side comparison box -->
+          <div id="dupComparisonSection" class="d-none pt-3 border-top border-secondary border-opacity-25">
+            <h6 class="fw-bold text-white mb-3"><i class="bi bi-layout-split me-1 text-primary"></i> Side-by-Side Document Comparison</h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <div class="comparison-card h-100">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary">Original Document</span>
+                    <span class="text-muted small" id="dupCompDoc1Id"></span>
+                  </div>
+                  <div class="text-center bg-black rounded p-2 mb-2" style="min-height: 220px;">
+                    <img id="dupCompDoc1Img" src="" alt="Original" class="img-fluid rounded" style="max-height: 280px; object-fit: contain;">
+                  </div>
+                  <div id="dupCompDoc1Details" class="small"></div>
                 </div>
               </div>
-
-              <!-- Extra Extracted Fields (if any) -->
-              <div class="glass-card mb-3 p-3 d-none" id="modalExtraFieldsSection">
-                <h6 class="fw-bold mb-2 text-white small text-uppercase">
-                  Additional Extracted Attributes
-                </h6>
-                <div class="row g-2" id="modalExtraFieldsContainer">
-                  <!-- Injected via JS -->
-                </div>
-              </div>
-
-              <!-- Raw OCR Output Box -->
-              <div class="glass-card p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="fw-bold mb-0 text-white">
-                    <i class="bi bi-terminal me-1 text-primary"></i> Extracted OCR Text
-                  </h6>
-                  <button class="btn btn-sm btn-outline-custom py-0 px-2" id="copyOcrBtn" title="Copy OCR Text">
-                    <i class="bi bi-clipboard"></i> Copy
-                  </button>
-                </div>
-                <div class="ocr-box" id="modalOcrText">
-                  No OCR text available.
+              <div class="col-12 col-md-6">
+                <div class="comparison-card h-100 border-warning border-opacity-50">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-warning text-dark">Potentially Matching Record</span>
+                    <span class="text-muted small" id="dupCompDoc2Id"></span>
+                  </div>
+                  <div class="text-center bg-black rounded p-2 mb-2" style="min-height: 220px;">
+                    <img id="dupCompDoc2Img" src="" alt="Candidate" class="img-fluid rounded" style="max-height: 280px; object-fit: contain;">
+                  </div>
+                  <div id="dupCompDoc2Details" class="small"></div>
                 </div>
               </div>
             </div>
@@ -410,95 +728,95 @@
 {% block scripts %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  // Modal instances
   const inspectModalEl = document.getElementById("inspectModal");
   const inspectModal = new bootstrap.Modal(inspectModalEl);
-  const loadingEl = document.getElementById("modalLoading");
-  const detailsEl = document.getElementById("modalDetails");
-  const subHeader = document.getElementById("modalSubHeader");
-  const keyFieldsContainer = document.getElementById("modalKeyFieldsContainer");
-  const extraFieldsSection = document.getElementById("modalExtraFieldsSection");
-  const extraFieldsContainer = document.getElementById("modalExtraFieldsContainer");
-  const ocrTextBox = document.getElementById("modalOcrText");
-  const docImage = document.getElementById("modalDocImage");
-  const docLink = document.getElementById("modalDocLink");
-  const copyBtn = document.getElementById("copyOcrBtn");
 
-  document.querySelectorAll(".inspect-btn").forEach(button => {
-    button.addEventListener("click", function() {
+  const reviewModalEl = document.getElementById("reviewModal");
+  const reviewModal = new bootstrap.Modal(reviewModalEl);
+
+  const duplicatesModalEl = document.getElementById("duplicatesModal");
+  const duplicatesModal = new bootstrap.Modal(duplicatesModalEl);
+
+  let currentDocCache = null;
+
+  // 1. Inspect Button Click Handlers
+  document.querySelectorAll(".inspect-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
       const docId = this.getAttribute("data-doc-id");
       openInspectModal(docId);
     });
   });
 
+  // 2. Review Button Click Handlers (Module 11)
+  document.querySelectorAll(".review-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      const docId = this.getAttribute("data-doc-id");
+      openReviewModal(docId);
+    });
+  });
+
+  // 3. Duplicate Button Click Handlers (Module 12)
+  document.querySelectorAll(".duplicate-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      const docId = this.getAttribute("data-doc-id");
+      openDuplicatesModal(docId);
+    });
+  });
+
+  // -------------------------------------------------------------
+  // OPEN INSPECT MODAL (Tabs: Fields, Consistency M13, Quality M14)
+  // -------------------------------------------------------------
   function openInspectModal(docId) {
-    loadingEl.classList.remove("d-none");
-    detailsEl.classList.add("d-none");
-    subHeader.textContent = "Fetching record #" + docId + "...";
+    document.getElementById("modalLoading").classList.remove("d-none");
+    document.getElementById("modalDetails").classList.add("d-none");
+    document.getElementById("modalSubHeader").textContent = "Fetching record #" + docId + "...";
     inspectModal.show();
 
-    fetch("/api/document/" + docId)
-      .then(res => {
-        if (!res.ok) throw new Error("Could not load document details.");
-        return res.json();
-      })
-      .then(data => {
-        populateModal(data);
-      })
-      .catch(err => {
-        loadingEl.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-      });
+    Promise.all([
+      fetch("/api/document/" + docId).then(r => r.json()),
+      fetch("/api/document/" + docId + "/consistency").then(r => r.json()).catch(() => null),
+      fetch("/api/document/" + docId + "/quality-score").then(r => r.json()).catch(() => null)
+    ]).then(([doc, consistency, quality]) => {
+      populateInspectModal(doc, consistency, quality);
+    }).catch(err => {
+      document.getElementById("modalLoading").innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    });
   }
 
-  function populateModal(doc) {
-    loadingEl.classList.add("d-none");
-    detailsEl.classList.remove("d-none");
+  function populateInspectModal(doc, consistency, quality) {
+    document.getElementById("modalLoading").classList.add("d-none");
+    document.getElementById("modalDetails").classList.remove("d-none");
+    currentDocCache = doc;
 
-    // Structured fields: merge base record with extra parsed fields
+    const vStat = doc.verification_status || "needs_review";
+    let vBadgeHtml = "";
+    if (vStat === "manually_verified" || vStat === "reviewed") {
+      vBadgeHtml = `<span class="badge bg-success text-white ms-2"><i class="bi bi-patch-check-fill me-1"></i>Manually Verified</span>`;
+    } else if (vStat === "auto_verified") {
+      vBadgeHtml = `<span class="badge bg-info text-dark fw-bold ms-2"><i class="bi bi-shield-fill-check me-1"></i>Auto-Verified</span>`;
+    } else {
+      vBadgeHtml = `<span class="badge bg-warning text-dark fw-bold ms-2"><i class="bi bi-shield-exclamation me-1"></i>Unverified (Needs Review)</span>`;
+    }
+    document.getElementById("modalSubHeader").innerHTML = `Record #${doc.id} &bull; ${doc.document_type || "Document"} ${vBadgeHtml}`;
+
     const extra = doc.extra_fields_parsed || {};
     const merged = { ...extra };
-
-    // Document image / PDF preview handling
     const filename = doc.file_path ? doc.file_path.split(/[\\/]/).pop() : "";
     const originalFileUrl = filename ? "/uploads/" + filename : "";
     const isPdf = doc.file_path && doc.file_path.toLowerCase().endsWith(".pdf");
-    const pdfPagesRow = document.getElementById("modalPdfPagesRow");
 
-    if (pdfPagesRow) {
-      pdfPagesRow.innerHTML = "";
-      pdfPagesRow.classList.add("d-none");
-    }
-
-    if (isPdf) {
-      const previewImgRel = extra["Preview Image"];
-      docImage.src = previewImgRel ? "/uploads/" + previewImgRel : originalFileUrl;
-      docLink.href = originalFileUrl;
-      docLink.innerHTML = '<i class="bi bi-file-earmark-pdf me-1 text-danger"></i> Open Original PDF';
-
-      // Multi-page selector if multiple pages exist
-      const pageList = extra["PDF Pages"];
-      if (Array.isArray(pageList) && pageList.length > 1 && pdfPagesRow) {
-        pdfPagesRow.classList.remove("d-none");
-        pageList.forEach((pgRel, idx) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = `btn btn-xs ${idx === 0 ? "btn-primary-custom" : "btn-outline-custom"} py-1 px-2`;
-          btn.style.fontSize = "0.75rem";
-          btn.innerHTML = `<i class="bi bi-file-earmark-text me-1"></i>Page ${idx + 1}`;
-          btn.onclick = () => {
-            docImage.src = "/uploads/" + pgRel;
-            pdfPagesRow.querySelectorAll("button").forEach(b => b.className = "btn btn-xs btn-outline-custom py-1 px-2");
-            btn.className = "btn btn-xs btn-primary-custom py-1 px-2";
-          };
-          pdfPagesRow.appendChild(btn);
-        });
-      }
+    // Preview
+    const docImage = document.getElementById("modalDocImage");
+    const docLink = document.getElementById("modalDocLink");
+    if (isPdf && extra["Preview Image"]) {
+      docImage.src = "/uploads/" + extra["Preview Image"];
     } else {
       docImage.src = originalFileUrl;
-      docLink.href = originalFileUrl;
-      docLink.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i> Open Full Image';
     }
-    
-    // Ensure core fields are populated
+    docLink.href = originalFileUrl;
+
+    // Structured fields
     if (doc.citizen_name && !merged["Citizen Name"]) merged["Citizen Name"] = doc.citizen_name;
     if (doc.certificate_number && !merged["Certificate Number"]) merged["Certificate Number"] = doc.certificate_number;
     if (doc.aadhaar_number && !merged["Aadhaar Number"]) merged["Aadhaar Number"] = doc.aadhaar_number;
@@ -506,63 +824,453 @@ document.addEventListener("DOMContentLoaded", function() {
     if (doc.district && !merged["District"]) merged["District"] = doc.district;
     if (doc.issue_date && !merged["Issue Date"]) merged["Issue Date"] = doc.issue_date;
 
-    const displayList = [];
-    displayList.push({ label: "Document Type", value: doc.document_type, highlight: "badge-primary" });
-    
-    // Ordered priority list of fields
+    const displayList = [{ label: "Document Type", value: doc.document_type, highlight: "badge-primary" }];
     const priorityKeys = [
       "Citizen Name", "Certificate Number", "Aadhaar Number", "Annual Income",
       "Community", "Date of Birth", "Gender", "Father / Husband Name",
-      "Father's Name", "Mother's Name", "District", "Taluk", "Village",
-      "Place of Birth", "PIN Code", "Issue Date"
+      "Father's Name", "Mother's Name", "District", "Taluk", "Village", "Issue Date"
     ];
-
     priorityKeys.forEach(k => {
       if (merged[k]) {
         let hl = "";
-        if (k === "Annual Income") hl = "text-success fw-bold fs-6";
+        if (k === "Annual Income") hl = "text-success fw-bold";
         else if (k === "Certificate Number") hl = "text-info font-monospace";
         else if (k === "Aadhaar Number") hl = "text-warning font-monospace";
-        else hl = "text-white";
+        else hl = "citizen-name-text";
         displayList.push({ label: k, value: merged[k], highlight: hl });
       }
     });
-
-    // Any remaining extra keys
     Object.keys(merged).forEach(k => {
       if (!priorityKeys.includes(k) && !displayList.some(d => d.label === k)) {
         displayList.push({ label: k, value: merged[k], highlight: "text-light" });
       }
     });
 
-    // Upload timestamp
-    displayList.push({ label: "Upload Timestamp", value: doc.upload_date, highlight: "text-muted" });
-
-    keyFieldsContainer.innerHTML = displayList.map(f => `
+    document.getElementById("modalKeyFieldsContainer").innerHTML = displayList.map(f => `
       <div class="col-sm-6">
         <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
           <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">${f.label}</small>
-          <strong class="${f.highlight || 'text-white'}">
-            ${f.value}
-          </strong>
+          <strong class="${f.highlight || 'text-white'}">${f.value}</strong>
         </div>
       </div>
     `).join("");
 
-    extraFieldsSection.classList.add("d-none");
+    document.getElementById("modalOcrText").textContent = doc.ocr_text || "No OCR text detected.";
 
-    // OCR Text
-    ocrTextBox.textContent = doc.ocr_text || "No OCR text detected.";
+    // POPULATE TAB 2: Consistency (M13)
+    if (consistency) {
+      const bannerClass = consistency.overall_status === "Passed" ? "alert-success" : (consistency.overall_status === "Failed" ? "alert-danger" : "alert-warning");
+      document.getElementById("consistencySummaryBanner").innerHTML = `
+        <div class="alert ${bannerClass} bg-opacity-10 border mb-0 d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-1"><i class="bi bi-shield-check me-1"></i> Consistency Status: ${consistency.overall_status}</h6>
+            <p class="mb-0 small">${consistency.summary_message}</p>
+          </div>
+          <span class="badge bg-dark border">${consistency.passed_count} Passed / ${consistency.failed_count} Failed</span>
+        </div>
+      `;
+      const fBody = document.getElementById("consistencyFieldsBody");
+      fBody.innerHTML = Object.values(consistency.field_results || {}).map(f => `
+        <tr>
+          <td class="fw-semibold text-white">${f.field_name}</td>
+          <td><code>${f.extracted_value || '<span class="text-muted fst-italic">Missing</span>'}</code></td>
+          <td>
+            <span class="badge ${f.validation_status === 'Passed' ? 'bg-success' : (f.validation_status === 'Failed' ? 'bg-danger' : 'bg-warning')} bg-opacity-25 text-white">
+              ${f.validation_status}
+            </span>
+          </td>
+          <td class="small">
+            <div>${f.explanation}</div>
+            ${f.suggested_action ? `<div class="text-info mt-1"><i class="bi bi-lightbulb me-1"></i>${f.suggested_action}</div>` : ''}
+          </td>
+        </tr>
+      `).join("");
+
+      const logList = document.getElementById("logicalChecksList");
+      logList.innerHTML = (consistency.logical_integrity_checks || []).map(c => `
+        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+          <div>
+            <strong class="text-white small d-block">${c.check}</strong>
+            <span class="text-muted small">${c.explanation}</span>
+          </div>
+          <span class="badge ${c.status === 'Passed' ? 'bg-success' : 'bg-danger'} bg-opacity-25 text-white">${c.status}</span>
+        </div>
+      `).join("") || '<p class="text-muted small mb-0">No cross-field conflicts detected.</p>';
+    }
+
+    // POPULATE TAB 3: Technical Quality (M14)
+    if (quality) {
+      const qScore = Math.round(quality.overall_score || 0);
+      const catClass = qScore >= 85 ? "text-success" : (qScore >= 65 ? "text-info" : "text-warning");
+      document.getElementById("qualityOverviewCard").innerHTML = `
+        <div class="row align-items-center">
+          <div class="col-md-4 text-center border-end border-secondary border-opacity-25">
+            <div class="display-4 fw-bold ${catClass}">${qScore}</div>
+            <div class="text-muted small text-uppercase fw-bold">Overall Technical Score / 100</div>
+            <span class="badge mt-2 ${catClass} border border-secondary">${quality.category}</span>
+          </div>
+          <div class="col-md-8 ps-md-4">
+            <h6 class="fw-bold text-white mb-2">Score Component Breakdown</h6>
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span>Field Completeness (Weight: 40%)</span>
+                <strong class="text-white">${quality.field_completeness_score}%</strong>
+              </div>
+              <div class="progress" style="height: 6px;"><div class="progress-bar bg-success" style="width: ${quality.field_completeness_score}%;"></div></div>
+            </div>
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span>Image Quality (Weight: 30%)</span>
+                <strong class="text-white">${quality.image_quality_score !== null ? quality.image_quality_score + '%' : 'Unavailable'}</strong>
+              </div>
+              <div class="progress" style="height: 6px;"><div class="progress-bar bg-info" style="width: ${quality.image_quality_score || 0}%;"></div></div>
+            </div>
+            <div>
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span>OCR Confidence (Weight: 30%)</span>
+                <strong class="text-white">${quality.ocr_confidence_score !== null ? quality.ocr_confidence_score + '%' : 'Unavailable'}</strong>
+              </div>
+              <div class="progress" style="height: 6px;"><div class="progress-bar bg-warning" style="width: ${quality.ocr_confidence_score || 0}%;"></div></div>
+            </div>
+          </div>
+        </div>
+      `;
+      const factList = document.getElementById("qualityFactorsList");
+      factList.innerHTML = (quality.score_reduction_factors || []).map(f => `
+        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 small text-light">
+          <i class="bi bi-exclamation-circle text-warning me-1"></i> ${f}
+        </div>
+      `).join("") || '<p class="text-success small mb-0"><i class="bi bi-check-circle me-1"></i> No negative quality reduction factors detected.</p>';
+    }
+  }
+
+  // -------------------------------------------------------------
+  // OPEN REVIEW MODAL (Module 11: Human-in-the-loop validation)
+  // -------------------------------------------------------------
+  function openReviewModal(docId) {
+    document.getElementById("reviewLoading").classList.remove("d-none");
+    document.getElementById("reviewContent").classList.add("d-none");
+    document.getElementById("reviewDocId").value = docId;
+    reviewModal.show();
+
+    fetch("/api/document/" + docId + "/verification")
+      .then(r => r.json())
+      .then(report => {
+        populateReviewModal(docId, report);
+      })
+      .catch(err => {
+        document.getElementById("reviewLoading").innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+      });
+  }
+
+  function populateReviewModal(docId, report) {
+    document.getElementById("reviewLoading").classList.add("d-none");
+    document.getElementById("reviewContent").classList.remove("d-none");
+
+    document.getElementById("reviewOverallStatusText").textContent = (report.overall_status || "needs_review").replace("_", " ").toUpperCase();
+    const pill = document.getElementById("reviewStatusPill");
+    if (report.overall_status === "manually_verified" || report.overall_status === "reviewed") {
+      pill.innerHTML = `<span class="badge bg-success fs-6"><i class="bi bi-check2-circle me-1"></i>Reviewed by ${report.verified_by || 'Officer'}</span>`;
+    } else {
+      pill.innerHTML = `<span class="badge bg-warning text-dark fs-6"><i class="bi bi-exclamation-triangle me-1"></i>${report.flagged_fields_count} Field(s) Need Review</span>`;
+    }
+
+    // Load preview image
+    fetch("/api/document/" + docId)
+      .then(r => r.json())
+      .then(doc => {
+        currentDocCache = doc;
+        const fn = doc.file_path ? doc.file_path.split(/[\\/]/).pop() : "";
+        document.getElementById("reviewDocImage").src = "/uploads/" + fn;
+        document.getElementById("reviewDocLink").href = "/uploads/" + fn;
+      });
+
+    // Populate editable fields with explanations
+    const fContainer = document.getElementById("reviewFieldsContainer");
+    const fields = report.fields || {};
+    fContainer.innerHTML = Object.entries(fields).map(([fieldName, info]) => {
+      const isFlagged = info.is_flagged;
+      const borderStyle = isFlagged ? "border-danger border-opacity-75" : "border-secondary border-opacity-25";
+      const reasonsHtml = (info.issue_reasons || []).map(r => `
+        <div class="field-warning-box mt-1">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i> ${r}
+        </div>
+      `).join("");
+
+      return `
+        <div class="p-3 rounded bg-dark border ${borderStyle}">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label text-white fw-bold mb-0">${fieldName}</label>
+            <span class="badge ${isFlagged ? 'bg-danger' : 'bg-success'} bg-opacity-25 text-white small">
+              ${isFlagged ? 'Attention Needed' : 'Valid'}
+            </span>
+          </div>
+          <input type="text" class="form-control custom-input review-input" data-field="${fieldName}" value="${info.extracted_value || ''}" placeholder="Enter ${fieldName}">
+          ${reasonsHtml}
+          ${info.ocr_context ? `<div class="text-muted small mt-1 font-monospace" style="font-size: 0.75rem;">OCR Context: "${info.ocr_context}"</div>` : ''}
+        </div>
+      `;
+    }).join("");
+
+    // Populate Audit History
+    const history = report.correction_history || [];
+    const hContainer = document.getElementById("reviewAuditLogContainer");
+    if (history.length > 0) {
+      hContainer.innerHTML = `
+        <div class="table-responsive">
+          <table class="table custom-table table-sm small mb-0">
+            <thead><tr><th>Field</th><th>Old Value</th><th>Corrected Value</th><th>Reviewer</th><th>Date</th></tr></thead>
+            <tbody>
+              ${history.map(h => `
+                <tr>
+                  <td class="text-white">${h.field_name}</td>
+                  <td class="text-muted text-decoration-line-through">${h.old_value || '-'}</td>
+                  <td class="text-success fw-bold">${h.new_value}</td>
+                  <td>${h.corrected_by}</td>
+                  <td class="text-muted">${h.corrected_at ? h.corrected_at.substring(0, 19).replace('T', ' ') : '-'}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      hContainer.innerHTML = '<p class="text-muted small mb-0">No past corrections recorded for this document.</p>';
+    }
+  }
+
+  // Save Corrections Button Handler
+  document.getElementById("reviewSaveBtn").addEventListener("click", function() {
+    const docId = document.getElementById("reviewDocId").value;
+    const reviewer = document.getElementById("reviewAuthorInput").value || "Authorized Officer";
+    const notes = document.getElementById("reviewNotesInput").value || "";
+
+    const corrections = {};
+    document.querySelectorAll(".review-input").forEach(inp => {
+      corrections[inp.getAttribute("data-field")] = inp.value.trim();
+    });
+
+    fetch(`/api/document/${docId}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ corrections, reviewer_name: reviewer, notes })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert("Corrections saved successfully and document updated.");
+        openReviewModal(docId);
+      } else {
+        alert("Error saving corrections: " + data.error);
+      }
+    });
+  });
+
+  // Revalidate Button Handler
+  document.getElementById("reviewRevalidateBtn").addEventListener("click", function() {
+    const docId = document.getElementById("reviewDocId").value;
+    fetch(`/api/document/${docId}/revalidate`, { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        alert("Revalidation complete across consistency, quality, and OCR rules.");
+        openReviewModal(docId);
+      });
+  });
+
+  // Quick Approve All Fields Button Handler
+  const quickBtn = document.getElementById("quickVerifyAllBtn");
+  if (quickBtn) {
+    quickBtn.addEventListener("click", function() {
+      document.querySelectorAll(".field-warning-box").forEach(el => el.classList.add("d-none"));
+      document.querySelectorAll("#reviewFieldsContainer .badge").forEach(b => {
+        b.className = "badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 small";
+        b.innerHTML = '<i class="bi bi-check2 me-1"></i>Approved';
+      });
+      document.getElementById("reviewNotesInput").value = "All extracted citizen details verified against scan.";
+    });
+  }
+
+  // Inspect Modal Manual Verify Button Handler
+  const inspectVerifyBtn = document.getElementById("inspectManualVerifyBtn");
+  if (inspectVerifyBtn) {
+    inspectVerifyBtn.addEventListener("click", function() {
+      inspectModal.hide();
+      if (currentDocCache && currentDocCache.id) {
+        setTimeout(() => openReviewModal(currentDocCache.id), 300);
+      }
+    });
+  }
+
+  // Complete Manual Verification Button Handler
+  document.getElementById("reviewMarkReviewedBtn").addEventListener("click", function() {
+    const docId = document.getElementById("reviewDocId").value;
+    const reviewer = document.getElementById("reviewAuthorInput").value || "Authorized Officer";
+    const notes = document.getElementById("reviewNotesInput").value || "Manual verification confirmed by officer";
+
+    const corrections = {};
+    document.querySelectorAll(".review-input").forEach(inp => {
+      corrections[inp.getAttribute("data-field")] = inp.value.trim();
+    });
+
+    fetch(`/api/document/${docId}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ corrections, reviewer_name: reviewer, notes })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert("Manual verification completed successfully! Document status updated to Manually Verified.");
+        reviewModal.hide();
+        window.location.reload();
+      } else {
+        alert("Verification failed: " + (data.error || "Unknown error"));
+      }
+    });
+  });
+
+  // -------------------------------------------------------------
+  // OPEN DUPLICATES MODAL (Module 12: Advanced Duplicate Detection)
+  // -------------------------------------------------------------
+  function openDuplicatesModal(docId) {
+    document.getElementById("dupLoading").classList.remove("d-none");
+    document.getElementById("dupContent").classList.add("d-none");
+    document.getElementById("dupComparisonSection").classList.add("d-none");
+    duplicatesModal.show();
+
+    Promise.all([
+      fetch("/api/document/" + docId).then(r => r.json()),
+      fetch("/api/document/" + docId + "/duplicates").then(r => r.json())
+    ]).then(([currentDoc, dupReport]) => {
+      populateDuplicatesModal(currentDoc, dupReport);
+    }).catch(err => {
+      document.getElementById("dupLoading").innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    });
+  }
+
+  function populateDuplicatesModal(currentDoc, report) {
+    document.getElementById("dupLoading").classList.add("d-none");
+    document.getElementById("dupContent").classList.remove("d-none");
+
+    const banner = document.getElementById("dupBanner");
+    const title = document.getElementById("dupBannerTitle");
+    const desc = document.getElementById("dupBannerDesc");
+    const badge = document.getElementById("dupBannerBadge");
+
+    if (report.status === "Exact Match") {
+      banner.className = "alert alert-danger p-3 mb-4";
+      title.textContent = "Exact Identifier Match Detected";
+      badge.className = "badge bg-danger fs-6";
+      badge.textContent = "Exact Duplicate";
+    } else if (report.status === "Possible Duplicate") {
+      banner.className = "alert alert-warning p-3 mb-4";
+      title.textContent = "Potential Duplicate Record Found";
+      badge.className = "badge bg-warning text-dark fs-6";
+      badge.textContent = "Possible Duplicate";
+    } else {
+      banner.className = "alert alert-success p-3 mb-4";
+      title.textContent = "No Likely Duplicate Found";
+      badge.className = "badge bg-success fs-6";
+      badge.textContent = "Unique Document";
+    }
+    desc.textContent = report.summary_explanation;
+
+    // Matches List
+    const mContainer = document.getElementById("dupMatchesContainer");
+    const matches = report.matches || [];
+    if (matches.length > 0) {
+      mContainer.innerHTML = matches.map(m => `
+        <div class="glass-card p-3 border ${m.match_type === 'Exact Match' ? 'border-danger' : 'border-warning'} border-opacity-50">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <span class="badge bg-secondary me-1">Record #${m.record_id}</span>
+              <strong class="citizen-name-text">${m.citizen_name || 'No Name'}</strong>
+              <span class="text-muted small ms-2">(${m.document_type})</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge ${m.similarity_score >= 95 ? 'bg-danger' : 'bg-warning text-dark'}">${m.similarity_score}% Similarity</span>
+              <button class="btn btn-xs btn-outline-info py-1 px-2 compare-match-btn" data-matched-id="${m.record_id}">
+                <i class="bi bi-layout-split me-1"></i>Compare Side-by-Side
+              </button>
+            </div>
+          </div>
+          <div class="text-light small mb-2">${m.reason}</div>
+          <div class="d-flex flex-wrap gap-1">
+            ${m.matched_fields.map(f => `<span class="badge bg-dark border border-secondary small">${f}</span>`).join("")}
+          </div>
+        </div>
+      `).join("");
+
+      // Attach compare handlers
+      document.querySelectorAll(".compare-match-btn").forEach(b => {
+        b.addEventListener("click", function() {
+          const matchedId = this.getAttribute("data-matched-id");
+          fetch("/api/document/" + matchedId)
+            .then(r => r.json())
+            .then(matchedDoc => {
+              renderSideBySideComparison(currentDoc, matchedDoc);
+            });
+        });
+      });
+    } else {
+      mContainer.innerHTML = '<div class="text-center py-4 text-muted small"><i class="bi bi-check2-circle fs-3 text-success d-block mb-1"></i>No duplicate candidates found in the database.</div>';
+    }
+  }
+
+  function renderSideBySideComparison(doc1, doc2) {
+    const compSection = document.getElementById("dupComparisonSection");
+    compSection.classList.remove("d-none");
+
+    document.getElementById("dupCompDoc1Id").textContent = `ID #${doc1.id} (${doc1.document_type})`;
+    document.getElementById("dupCompDoc2Id").textContent = `ID #${doc2.id} (${doc2.document_type})`;
+
+    const fn1 = doc1.file_path ? doc1.file_path.split(/[\\/]/).pop() : "";
+    const fn2 = doc2.file_path ? doc2.file_path.split(/[\\/]/).pop() : "";
+    document.getElementById("dupCompDoc1Img").src = "/uploads/" + fn1;
+    document.getElementById("dupCompDoc2Img").src = "/uploads/" + fn2;
+
+    document.getElementById("dupCompDoc1Details").innerHTML = `
+      <div><strong>Citizen:</strong> ${doc1.citizen_name || '-'}</div>
+      <div><strong>Cert #:</strong> ${doc1.certificate_number || '-'}</div>
+      <div><strong>District:</strong> ${doc1.district || '-'}</div>
+      <div><strong>Date:</strong> ${doc1.issue_date || doc1.dob || '-'}</div>
+    `;
+    document.getElementById("dupCompDoc2Details").innerHTML = `
+      <div><strong>Citizen:</strong> ${doc2.citizen_name || '-'}</div>
+      <div><strong>Cert #:</strong> ${doc2.certificate_number || '-'}</div>
+      <div><strong>District:</strong> ${doc2.district || '-'}</div>
+      <div><strong>Date:</strong> ${doc2.issue_date || doc2.dob || '-'}</div>
+    `;
+
+    compSection.scrollIntoView({ behavior: 'smooth' });
   }
 
   // Copy OCR text button
-  copyBtn.addEventListener("click", function() {
-    navigator.clipboard.writeText(ocrTextBox.textContent).then(() => {
-      const originalText = copyBtn.innerHTML;
-      copyBtn.innerHTML = '<i class="bi bi-check2 text-success"></i> Copied!';
-      setTimeout(() => { copyBtn.innerHTML = originalText; }, 2000);
+  const copyBtn = document.getElementById("copyOcrBtn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function() {
+      const ocrTextBox = document.getElementById("modalOcrText");
+      navigator.clipboard.writeText(ocrTextBox.textContent).then(() => {
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="bi bi-check2 text-success"></i> Copied!';
+        setTimeout(() => { copyBtn.innerHTML = originalText; }, 2000);
+      });
     });
-  });
+  }
+
+  // Auto-open modals via URL params (e.g. ?review_doc_id=1, ?inspect_doc_id=1, ?dup_doc_id=1)
+  const urlParams = new URLSearchParams(window.location.search);
+  const reviewDocId = urlParams.get("review_doc_id");
+  const inspectDocId = urlParams.get("inspect_doc_id");
+  const dupDocId = urlParams.get("dup_doc_id");
+  if (reviewDocId) {
+    setTimeout(() => openReviewModal(reviewDocId), 300);
+  } else if (inspectDocId) {
+    setTimeout(() => openInspectModal(inspectDocId), 300);
+  } else if (dupDocId) {
+    setTimeout(() => openDuplicatesModal(dupDocId), 300);
+  }
 });
 </script>
 {% endblock %}
+

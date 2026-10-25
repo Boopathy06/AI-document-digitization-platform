@@ -85,6 +85,24 @@ def get_dashboard_stats(database_path: str | Path) -> Dict[str, Any]:
             """
         ).fetchone()[0]
 
+        # Pending verification count (needs_review)
+        pending_review_count = 0
+        try:
+            pending_review_count = connection.execute(
+                "SELECT COUNT(*) FROM government_documents WHERE verification_status = 'needs_review'"
+            ).fetchone()[0]
+        except Exception:
+            pass
+
+        # Verified count (auto_verified or manually_verified or verified)
+        verified_count = 0
+        try:
+            verified_count = connection.execute(
+                "SELECT COUNT(*) FROM government_documents WHERE verification_status IN ('auto_verified', 'manually_verified', 'verified')"
+            ).fetchone()[0]
+        except Exception:
+            pass
+
         # Recent 5 documents
         recent_rows = connection.execute(
             """
@@ -112,6 +130,8 @@ def get_dashboard_stats(database_path: str | Path) -> Dict[str, Any]:
         "type_breakdown": type_breakdown,
         "duplicates_blocked": dup_count,
         "districts_count": district_count,
+        "pending_verification": pending_review_count,
+        "verified_documents": verified_count,
         "recent_documents": recent_documents,
         "recent_duplicates": recent_duplicates,
     }
@@ -122,6 +142,7 @@ def get_all_documents(
     search_query: Optional[str] = None,
     document_type: Optional[str] = None,
     district: Optional[str] = None,
+    verification_status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> Tuple[List[Dict[str, Any]], int]:
@@ -146,6 +167,13 @@ def get_all_documents(
         conditions.append("district = ?")
         params.append(district.strip())
 
+    if verification_status and verification_status.strip() and verification_status != "All":
+        if verification_status == "verified":
+            conditions.append("verification_status IN ('auto_verified', 'manually_verified', 'verified')")
+        else:
+            conditions.append("verification_status = ?")
+            params.append(verification_status.strip())
+
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     with get_connection(database_path) as connection:
@@ -154,7 +182,8 @@ def get_all_documents(
 
         sql = f"""
             SELECT id, document_type, citizen_name, certificate_number, 
-                   aadhaar_number, dob, district, issue_date, upload_date, file_path, extra_fields
+                   aadhaar_number, dob, district, issue_date, upload_date, file_path, extra_fields,
+                   verification_status, verified_by, verified_at, quality_score
             FROM government_documents
             {where_clause}
             ORDER BY id DESC
@@ -190,7 +219,10 @@ def get_document_by_id(database_path: str | Path, doc_id: int) -> Optional[Dict[
             """
             SELECT id, document_type, citizen_name, certificate_number,
                    aadhaar_number, dob, district, issue_date, upload_date,
-                   ocr_text, file_path, extra_fields
+                   ocr_text, file_path, extra_fields,
+                   verification_status, verified_by, verified_at,
+                   field_corrections, verification_flags, consistency_results,
+                   quality_score, quality_report
             FROM government_documents
             WHERE id = ?
             """,
@@ -205,8 +237,25 @@ def get_document_by_id(database_path: str | Path, doc_id: int) -> Optional[Dict[
         doc["extra_fields_parsed"] = json.loads(doc.get("extra_fields") or "{}")
     except Exception:
         doc["extra_fields_parsed"] = {}
+    try:
+        doc["field_corrections_parsed"] = json.loads(doc.get("field_corrections") or "{}")
+    except Exception:
+        doc["field_corrections_parsed"] = {}
+    try:
+        doc["verification_flags_parsed"] = json.loads(doc.get("verification_flags") or "[]")
+    except Exception:
+        doc["verification_flags_parsed"] = []
+    try:
+        doc["consistency_results_parsed"] = json.loads(doc.get("consistency_results") or "{}")
+    except Exception:
+        doc["consistency_results_parsed"] = {}
+    try:
+        doc["quality_report_parsed"] = json.loads(doc.get("quality_report") or "{}")
+    except Exception:
+        doc["quality_report_parsed"] = {}
 
     return doc
+
 
 
 def get_distinct_districts(database_path: str | Path) -> List[str]:

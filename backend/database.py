@@ -1,6 +1,9 @@
 import sqlite3
 from datetime import datetime
-DATABASE_NAME = "../database/documents.db"
+from pathlib import Path
+
+DATABASE_PATH = Path(__file__).resolve().parent.parent / "database" / "documents.db"
+DATABASE_NAME = str(DATABASE_PATH)
 
 
 def create_database():

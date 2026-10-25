@@ -158,11 +158,9 @@ def build_sql_from_query(query: str, entities: Dict[str, Any]) -> Tuple[str, Lis
         )
 
     # Intent C: Standard Government Documents Query
-    base_select = "SELECT COUNT(*) FROM government_documents" if is_count else (
-        "SELECT id, document_type, citizen_name, certificate_number, aadhaar_number, "
-        "dob, district, issue_date, upload_date, file_path, extra_fields "
-        "FROM government_documents"
-    )
+    base_select = "SELECT COUNT(*) FROM government_documents" if is_count else "SELECT * FROM government_documents"
+
+
 
     conditions: List[str] = []
     params: List[Any] = []
@@ -270,10 +268,31 @@ def generate_natural_answer(
         cert_no = doc.get("certificate_number") or doc.get("extra_fields", {}).get("Roll Number") or "N/A"
         date = doc.get("issue_date") or doc.get("upload_date") or ""
         date_str = f" issued on {date}" if date else ""
+
+        # Differentiate between OCR-extracted, human-corrected, and reviewed records
+        status_note = ""
+        v_status = doc.get("verification_status")
+        corrections = doc.get("field_corrections") or "{}"
+        if isinstance(corrections, str):
+            try:
+                corrections = json.loads(corrections)
+            except Exception:
+                corrections = {}
+        if corrections:
+            reviewer = doc.get("verified_by") or "Officer"
+            status_note = f" (Status: Human-reviewed with verified corrections by {reviewer})."
+        elif v_status == "auto_verified":
+            status_note = " (Status: Automated consistency and quality checks passed)."
+        elif v_status == "needs_review":
+            status_note = " (Status: OCR-extracted, pending human review)."
+        elif v_status:
+            status_note = f" (Status: {v_status.replace('_', ' ').title()})."
+
         return (
             f"Found 1 {doc_type} for {name} in {district} "
-            f"(Certificate/ID: {cert_no}{date_str})."
+            f"(Certificate/ID: {cert_no}{date_str}){status_note}"
         )
+
 
     # Multiple records
     types_found = list({r.get("document_type", "Document") for r in records})

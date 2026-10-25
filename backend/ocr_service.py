@@ -6,7 +6,7 @@ printed documents, handwritten forms, and bilingual government certificates.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 try:
     import easyocr
@@ -62,12 +62,8 @@ def get_reader():
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf"}
 
 
-def extract_text(document_path: str | Path) -> str:
-    """Extract all detected text with reading-order layout and confidence filtering.
-    
-    Uses PaddleOCR as primary engine for high accuracy on printed & handwritten text,
-    with automatic fallback to EasyOCR. Supports multi-page PDF documents via rasterization.
-    """
+def extract_text_and_confidence(document_path: str | Path) -> Tuple[str, Optional[float]]:
+    """Extract text and return both the formatted string and the average OCR confidence."""
     path = Path(document_path)
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
@@ -82,20 +78,33 @@ def extract_text(document_path: str | Path) -> str:
             temp_out = path.parent / "pdf_pages" / path.stem
             pdf_result = render_pdf_to_images(path, temp_out, dpi=200)
             page_text_blocks: List[str] = []
+            CERT_KEYWORDS = (
+                "certificate", "certify", "income", "community", "birth", "death",
+                "aadhaar", "unique identification", "pan card", "driving licence", "license",
+                "son of", "daughter of", "wife of", "residing", "resident", "tahsildar",
+                "government", "revenue", "department"
+            )
             for page in pdf_result.pages:
-                if page.embedded_text and len(page.embedded_text.strip()) >= 50:
-                    text_piece = page.embedded_text
+                raw_emb = (page.embedded_text or "").strip()
+                has_rich_text = (
+                    len(raw_emb) >= 150
+                    and sum(1 for kw in CERT_KEYWORDS if kw in raw_emb.lower()) >= 2
+                )
+                if has_rich_text:
+                    text_piece = raw_emb
                 else:
                     text_piece = extract_text(page.image_path)
-                    if not text_piece and page.embedded_text:
-                        text_piece = page.embedded_text
+                    if raw_emb and text_piece and raw_emb not in text_piece:
+                        text_piece = text_piece + "\n" + raw_emb
+                    elif not text_piece and raw_emb:
+                        text_piece = raw_emb
                 if text_piece:
                     page_text_blocks.append(text_piece)
 
             if not page_text_blocks and pdf_result.combined_embedded_text:
-                return pdf_result.combined_embedded_text
+                return pdf_result.combined_embedded_text, 0.95
 
-            return "\n\n".join(page_text_blocks)
+            return "\n\n".join(page_text_blocks), 0.90
         except Exception as error:
             raise OCRProcessingError(f"Failed to process PDF pages for OCR: {error}") from error
 
@@ -141,11 +150,22 @@ def extract_text(document_path: str | Path) -> str:
                 raise OCRProcessingError("Unable to read text from this image.") from error
 
     if not valid_items:
-        return ""
+        return "", None
 
-    # Sort boxes into natural top-to-bottom, left-to-right reading order
+    avg_conf = sum(item[2] for item in valid_items) / len(valid_items)
     sorted_text_lines = sort_boxes_into_lines(valid_items)
-    return "\n".join(sorted_text_lines)
+    return "\n".join(sorted_text_lines), avg_conf
+
+
+def extract_text(document_path: str | Path) -> str:
+    """Extract all detected text with reading-order layout and confidence filtering.
+    
+    Uses PaddleOCR as primary engine for high accuracy on printed & handwritten text,
+    with automatic fallback to EasyOCR. Supports multi-page PDF documents via rasterization.
+    """
+    text, _ = extract_text_and_confidence(document_path)
+    return text
+
 
 
 def sort_boxes_into_lines(items: List[Tuple]) -> List[str]:

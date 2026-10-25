@@ -38,13 +38,17 @@
       <div class="step-icon-circle"><i class="bi bi-card-checklist"></i></div>
       <span class="step-label">5. Extraction</span>
     </div>
-    <div class="step-item {% if duplicate_check and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
-      <div class="step-icon-circle"><i class="bi bi-shield-lock"></i></div>
-      <span class="step-label">6. Deduplication</span>
+    <div class="step-item {% if consistency_report and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-patch-check"></i></div>
+      <span class="step-label">6. Consistency</span>
+    </div>
+    <div class="step-item {% if quality_score_report and uploaded_filename %}completed{% elif uploaded_filename %}active{% endif %}">
+      <div class="step-icon-circle"><i class="bi bi-speedometer2"></i></div>
+      <span class="step-label">7. Quality Score</span>
     </div>
     <div class="step-item {% if saved_document_id %}completed{% endif %}">
       <div class="step-icon-circle"><i class="bi bi-database-check"></i></div>
-      <span class="step-label">7. Database</span>
+      <span class="step-label">8. Database</span>
     </div>
   </div>
 
@@ -101,8 +105,11 @@
                   <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 p-2">
                     <i class="bi bi-database-check me-1"></i> Saved as Record #{{ saved_document_id }}
                   </span>
+                  <a href="{{ url_for('dashboard_view') }}?review_doc_id={{ saved_document_id }}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-pencil-square me-1"></i> Review
+                  </a>
                   <a href="{{ url_for('dashboard_view') }}" class="btn btn-sm btn-primary-custom">
-                    <i class="bi bi-grid-1x2 me-1"></i> View in Dashboard
+                    <i class="bi bi-grid-1x2 me-1"></i> Dashboard
                   </a>
                 </div>
               {% else %}
@@ -154,6 +161,219 @@
                 </div>
               {% endfor %}
             </div>
+          </div>
+        {% endif %}
+
+        <!-- Module 14: Document Technical Quality & Completeness Score -->
+        {% if quality_score_report %}
+          <div class="glass-card mb-4 p-4 border border-primary border-opacity-50">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h5 class="fw-bold text-white mb-1">
+                  <i class="bi bi-speedometer2 me-2 text-info"></i>Module 14: Quality & Completeness Score
+                </h5>
+                <p class="text-muted small mb-0">
+                  Comprehensive 0–100 technical rating calculated across image clarity, OCR confidence, and schema completeness.
+                </p>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge {% if quality_score_report.overall_score >= 80 %}bg-success{% elif quality_score_report.overall_score >= 60 %}bg-info text-dark{% elif quality_score_report.overall_score >= 40 %}bg-warning text-dark{% else %}bg-danger{% endif %} px-3 py-2 fs-6">
+                  {{ quality_score_report.category }} ({{ quality_score_report.overall_score|round }}/100)
+                </span>
+              </div>
+            </div>
+
+            <!-- Score Progress Bars -->
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-4">
+                <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Image Clarity (30%)</span>
+                    <strong class="text-white">
+                      {% if quality_score_report.image_quality_score is not none %}{{ quality_score_report.image_quality_score|round }}%{% else %}N/A{% endif %}
+                    </strong>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                    <div class="progress-bar bg-info" style="width: {% if quality_score_report.image_quality_score is not none %}{{ quality_score_report.image_quality_score|round }}%{% else %}0%{% endif %};"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">OCR Confidence (30%)</span>
+                    <strong class="text-white">
+                      {% if quality_score_report.ocr_confidence_score is not none %}{{ quality_score_report.ocr_confidence_score|round }}%{% else %}N/A{% endif %}
+                    </strong>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                    <div class="progress-bar bg-primary" style="width: {% if quality_score_report.ocr_confidence_score is not none %}{{ quality_score_report.ocr_confidence_score|round }}%{% else %}0%{% endif %};"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Completeness (40%)</span>
+                    <strong class="text-white">{{ quality_score_report.field_completeness_score|round }}%</strong>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                    <div class="progress-bar bg-success" style="width: {{ quality_score_report.field_completeness_score|round }}%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Score Reductions and Recommendations -->
+            {% if quality_score_report.score_reduction_factors or quality_score_report.recommendation %}
+              <div class="row g-2 mb-3">
+                {% if quality_score_report.score_reduction_factors %}
+                  <div class="col-12 col-md-6">
+                    <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 small">
+                      <strong class="text-danger d-block mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Score Reductions:</strong>
+                      <ul class="mb-0 ps-3 text-light">
+                        {% for r in quality_score_report.score_reduction_factors %}
+                          <li>{{ r }}</li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  </div>
+                {% endif %}
+                {% if quality_score_report.recommendation %}
+                  <div class="col-12 col-md-6">
+                    <div class="p-2 rounded bg-info bg-opacity-10 border border-info border-opacity-25 small">
+                      <strong class="text-info d-block mb-1"><i class="bi bi-lightbulb me-1"></i>Recommendation:</strong>
+                      <div class="text-light">{{ quality_score_report.recommendation }}</div>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+
+            <div class="text-muted fst-italic small">
+              <i class="bi bi-info-circle me-1"></i> {{ quality_score_report.disclaimer }}
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Module 13: Consistency Verification Card -->
+        {% if consistency_report %}
+          <div class="glass-card mb-4 p-4 border border-secondary border-opacity-50">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h5 class="fw-bold text-white mb-1">
+                  <i class="bi bi-patch-check me-2 text-warning"></i>Module 13: Consistency Verification
+                </h5>
+                <p class="text-muted small mb-0">{{ consistency_report.summary }}</p>
+              </div>
+              <span class="badge {% if consistency_report.overall_status == 'Passed' %}bg-success{% elif consistency_report.overall_status == 'Warning' %}bg-warning text-dark{% else %}bg-danger{% endif %} px-3 py-2">
+                Status: {{ consistency_report.overall_status }}
+              </span>
+            </div>
+
+            <!-- Field validations list -->
+            <div class="row g-2">
+              {% for f in consistency_report.field_results %}
+                <div class="col-12 col-md-6">
+                  <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                    <div>
+                      <span class="text-muted small d-block">{{ f.field_name }}</span>
+                      <strong class="text-white small">{{ f.field_value or 'Missing' }}</strong>
+                      <span class="text-muted d-block" style="font-size: 0.72rem;">{{ f.check_rule }}</span>
+                    </div>
+                    <span class="badge {% if f.status == 'Passed' %}bg-success bg-opacity-25 text-success border border-success border-opacity-25{% elif f.status == 'Warning' %}bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25{% else %}bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25{% endif %}">
+                      {{ f.status }}
+                    </span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Cross-Field Warnings -->
+            {% if consistency_report.cross_field_warnings %}
+              <div class="mt-3 p-2 rounded bg-warning bg-opacity-10 border border-warning border-opacity-25 small text-warning">
+                <strong><i class="bi bi-exclamation-circle me-1"></i>Cross-Field Conflicts:</strong>
+                <ul class="mb-0 ps-3 mt-1">
+                  {% for w in consistency_report.cross_field_warnings %}
+                    <li>{{ w }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Module 11: Human-in-the-Loop Review Banner -->
+        {% if verification_report %}
+          <div class="glass-card mb-4 p-4 border border-opacity-50 {% if verification_report.flagged_fields_count > 0 %}border-warning{% else %}border-success{% endif %}">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+              <div>
+                <h5 class="fw-bold text-white mb-1">
+                  <i class="bi bi-person-check me-2 text-primary"></i>Module 11: Explainable OCR Validation & Review
+                </h5>
+                <p class="text-muted small mb-0">
+                  Status: <span class="badge {% if verification_report.overall_status == 'auto_verified' %}bg-success{% elif verification_report.overall_status == 'human_verified' %}bg-primary{% else %}bg-warning text-dark{% endif %} me-2">{{ verification_report.overall_status }}</span>
+                  &bull; Flagged fields: <strong class="text-white">{{ verification_report.flagged_fields_count }}</strong>
+                </p>
+              </div>
+              {% if saved_document_id %}
+                <a href="{{ url_for('dashboard_view') }}?review_doc_id={{ saved_document_id }}" class="btn btn-warning text-dark fw-bold btn-sm">
+                  <i class="bi bi-sliders me-1"></i> Open Review & Correction Workspace
+                </a>
+              {% endif %}
+            </div>
+
+            {% if verification_report.flagged_fields_count > 0 %}
+              <div class="mt-3 d-flex flex-column gap-2">
+                {% for fname, f in verification_report.fields.items() %}
+                  {% if f.is_flagged %}
+                    <div class="p-2 rounded bg-dark bg-opacity-50 border border-warning border-opacity-25 small">
+                      <div class="d-flex justify-content-between">
+                        <strong class="text-warning">{{ f.field_name }}</strong>
+                        <span class="badge bg-warning text-dark">Review Recommended</span>
+                      </div>
+                      <div class="text-light mt-1">
+                        {% for r in f.issue_reasons %}
+                          <div>&bull; {{ r }}</div>
+                        {% endfor %}
+                      </div>
+                      {% if f.ocr_context %}
+                        <div class="text-muted fst-italic mt-1" style="font-size: 0.75rem;">OCR Context: "{{ f.ocr_context }}"</div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Module 12: Advanced Duplicate Detection (RapidFuzz) -->
+        {% if advanced_duplicate_report %}
+          <div class="glass-card mb-4 p-4 border border-opacity-50 {% if advanced_duplicate_report.is_duplicate %}border-danger{% else %}border-success{% endif %}">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+              <h5 class="fw-bold text-white mb-0">
+                <i class="bi bi-fingerprint me-2 text-info"></i>Module 12: RapidFuzz Multi-Field Duplicate Analysis
+              </h5>
+              <span class="badge {% if advanced_duplicate_report.is_duplicate %}bg-danger{% else %}bg-success{% endif %}">
+                {% if advanced_duplicate_report.is_duplicate %}Potential Duplicate{% else %}Unique Document{% endif %}
+              </span>
+            </div>
+            <p class="small text-light mb-2">{{ advanced_duplicate_report.summary_explanation }}</p>
+
+            {% if advanced_duplicate_report.matches %}
+              <div class="d-flex flex-column gap-2 mt-2">
+                {% for m in advanced_duplicate_report.matches %}
+                  <div class="p-2 rounded bg-dark bg-opacity-50 border border-warning border-opacity-25 small">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span>Candidate Record #{{ m.record_id }} ({{ m.document_type }} - <strong class="citizen-name-text">{{ m.citizen_name or 'Unknown' }}</strong>)</span>
+                      <span class="badge bg-warning text-dark">{{ m.similarity_score }}% Match</span>
+                    </div>
+                    <div class="text-muted mt-1">{{ m.reason }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
           </div>
         {% endif %}
 
@@ -244,7 +464,7 @@
         <!-- Deduplication Result Card -->
         <div class="glass-card mb-4 p-4 border border-opacity-50 {% if duplicate_check.is_duplicate %}border-danger{% else %}border-success{% endif %}">
           <h5 class="fw-bold text-white mb-2">
-            <i class="bi bi-shield-check me-2 text-warning"></i>Module 6: Duplicate Detection
+            <i class="bi bi-shield-check me-2 text-warning"></i>Module 6: Exact Duplicate Detection
           </h5>
           <p class="mb-0 {% if duplicate_check.is_duplicate %}text-danger fw-semibold{% else %}text-success{% endif %}">
             {{ duplicate_check.reason }}

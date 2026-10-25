@@ -46,14 +46,15 @@ def extract_district(text: str) -> Optional[str]:
         if re.search(r"\b" + re.escape(d) + r"\b", text, re.I):
             return d
 
-    # 4. Fuzzy search across full words in text for district names (high cutoff)
-    words = re.findall(r"\b[A-Za-z]{4,15}\b", text)
-    for word in words:
-        close = difflib.get_close_matches(word.capitalize(), TN_DISTRICTS, n=1, cutoff=0.85)
-        if close:
-            return close[0]
+    # 5. Infer district from taluk if present (e.g. Avinashi Taluk -> Tiruppur)
+    m_taluk = re.search(r"\b([A-Za-z]{4,15})\s+Taluk\b", text, re.I)
+    if m_taluk:
+        taluk_cand = m_taluk.group(1).lower()
+        if taluk_cand in TALUK_TO_DISTRICT_MAP:
+            return TALUK_TO_DISTRICT_MAP[taluk_cand]
 
     return None
+
 
 
 def extract_certificate_number(text: str) -> Optional[str]:
@@ -137,16 +138,150 @@ def extract_valid_date(text: str) -> Optional[str]:
 extract_issue_date = extract_valid_date
 
 
+# Comprehensive Taluk to District mapping for Tamil Nadu
+TALUK_TO_DISTRICT_MAP: Dict[str, str] = {
+    # Tiruppur
+    "avinashi": "Tiruppur", "tiruppur": "Tiruppur", "palladam": "Tiruppur",
+    "dharapuram": "Tiruppur", "kangeyam": "Tiruppur", "uthukuli": "Tiruppur",
+    "madathukulam": "Tiruppur", "udumalpet": "Tiruppur",
+    # Salem
+    "salem": "Salem", "attur": "Salem", "omalur": "Salem", "mettur": "Salem",
+    "sankari": "Salem", "edappadi": "Salem", "gangavalli": "Salem", "valapady": "Salem",
+    "yercaud": "Salem", "kadayampatti": "Salem", "pethanaickenpalayam": "Salem",
+    # Coimbatore
+    "coimbatore": "Coimbatore", "pollachi": "Coimbatore", "mettupalayam": "Coimbatore",
+    "sulur": "Coimbatore", "annur": "Coimbatore", "kinathukadavu": "Coimbatore", "valparai": "Coimbatore",
+    # Chennai & Tiruvallur & Chengalpattu
+    "egmore": "Chennai", "mylapore": "Chennai", "guindy": "Chennai", "tondiarpet": "Chennai",
+    "velachery": "Chennai", "mambalam": "Chennai", "ambattur": "Tiruvallur", "avadi": "Tiruvallur",
+    "poonamallee": "Tiruvallur", "ponneri": "Tiruvallur", "gummidipoondi": "Tiruvallur",
+    "tiruttani": "Tiruvallur", "tambaram": "Chengalpattu", "pallavaram": "Chengalpattu",
+    "vandalur": "Chengalpattu", "chengalpattu": "Chengalpattu", "maduranthakam": "Chengalpattu",
+    # Erode
+    "erode": "Erode", "perundurai": "Erode", "bhavani": "Erode", "gobichettipalayam": "Erode",
+    "sathyamangalam": "Erode", "anthiyur": "Erode", "kodumudi": "Erode", "modakkurichi": "Erode",
+    # Madurai
+    "madurai": "Madurai", "melur": "Madurai", "thirumangalam": "Madurai", "usilampatti": "Madurai",
+    "vadipatti": "Madurai", "peraiyur": "Madurai",
+    # Trichy
+    "tiruchirappalli": "Tiruchirappalli", "srirangam": "Tiruchirappalli", "manapparai": "Tiruchirappalli",
+    "musiri": "Tiruchirappalli", "thuraiyur": "Tiruchirappalli", "lalgudi": "Tiruchirappalli",
+    # Dindigul
+    "dindigul": "Dindigul", "palani": "Dindigul", "kodaikanal": "Dindigul", "nilakottai": "Dindigul",
+    "oddanchatram": "Dindigul", "natham": "Dindigul", "vedasandur": "Dindigul",
+    # Namakkal
+    "namakkal": "Namakkal", "rasipuram": "Namakkal", "tiruchengode": "Namakkal", "paramathi": "Namakkal",
+    # Karur
+    "karur": "Karur", "kulithalai": "Karur", "aravakurichi": "Karur",
+    # Dharmapuri & Krishnagiri
+    "dharmapuri": "Dharmapuri", "harur": "Dharmapuri", "palacode": "Dharmapuri", "pennagaram": "Dharmapuri",
+    "krishnagiri": "Krishnagiri", "hosur": "Krishnagiri", "denkanikottai": "Krishnagiri",
+    # Thanjavur & Tiruvarur & Nagapattinam & Mayiladuthurai
+    "thanjavur": "Thanjavur", "kumbakonam": "Thanjavur", "pattukkottai": "Thanjavur",
+    "tiruvarur": "Tiruvarur", "mannargudi": "Tiruvarur", "nagapattinam": "Nagapattinam",
+    "mayiladuthurai": "Mayiladuthurai", "sirkazhi": "Mayiladuthurai",
+    # Vellore, Tirupathur, Ranipet
+    "vellore": "Vellore", "katpadi": "Vellore", "gudiyatham": "Vellore",
+    "tirupathur": "Tirupathur", "vaniyambadi": "Tirupathur", "ambur": "Tirupathur",
+    "ranipet": "Ranipet", "walajah": "Ranipet", "arakkonam": "Ranipet", "arcot": "Ranipet",
+    # Tiruvannamalai, Viluppuram, Cuddalore, Kallakurichi
+    "tiruvannamalai": "Tiruvannamalai", "arani": "Tiruvannamalai", "cheyyar": "Tiruvannamalai",
+    "viluppuram": "Viluppuram", "tindivanam": "Viluppuram", "gingee": "Viluppuram",
+    "cuddalore": "Cuddalore", "chidambaram": "Cuddalore", "panruti": "Cuddalore", "vridhachalam": "Cuddalore",
+    "kallakurichi": "Kallakurichi", "sankarapuram": "Kallakurichi", "ulundurpet": "Kallakurichi",
+    # South: Tirunelveli, Tenkasi, Thoothukudi, Kanyakumari
+    "tirunelveli": "Tirunelveli", "palayamkottai": "Tirunelveli", "ambasamudram": "Tirunelveli",
+    "tenkasi": "Tenkasi", "sankarankovil": "Tenkasi", "kadayanallur": "Tenkasi",
+    "thoothukudi": "Thoothukudi", "tiruchendur": "Thoothukudi", "kovilpatti": "Thoothukudi",
+    "kanyakumari": "Kanyakumari", "agastheeswaram": "Kanyakumari", "kalkulam": "Kanyakumari",
+}
+
+DISALLOWED_NAME_WORDS = {
+    "government", "department", "certificate", "revenue", "income", "tamil", "nadu",
+    "india", "signature", "date", "issue", "taluk", "district", "village", "door",
+    "permanent", "account", "licence", "driving", "transport", "corporation", "greater",
+    "chennai", "public", "health", "authority", "unique", "identification", "community",
+    "caste", "annual", "rupees", "thousand", "hundred", "father", "mother", "child",
+    "registration", "birth", "death", "valid", "validity", "union", "state", "form",
+    "male", "female", "transgender", "gender", "address", "holder", "card",
+}
+
+
 def clean_person_name(name_str: str) -> str:
     """Clean person name from honorifics, OCR noise, and trailing clauses."""
-    cleaned = re.sub(r"^(?:This is to certify that|certify that|Thiru|Tmt|Selvi|Mr\.?|Mrs\.?|Ms\.?|Shri|Smt\.?)\s+", "", name_str.strip(), flags=re.I)
-    cleaned = re.sub(r"\s+(?:son|daughter|wife|s/o|d/o|w/o|residing|rcsiding|at Door|Door|Village|Town|Taluk|District).*", "", cleaned, flags=re.I)
+    cleaned = re.sub(
+        r"^(?:This is to certify that|certify that|Thiru|Tmt|Selvan|Selvi|Mr\.?|Mrs\.?|Ms\.?|Shri|Smt\.?|Dr\.?)\s+",
+        "",
+        name_str.strip(),
+        flags=re.I,
+    )
+    cleaned = re.sub(
+        r"\s+(?:son|daughter|wife|s/o|d/o|w/o|residing|rcsiding|at Door|Door|Village|Town|Taluk|District).*",
+        "",
+        cleaned,
+        flags=re.I,
+    )
     cleaned = re.sub(r"[^\w\s\.]", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
+
+
+def validate_and_clean_citizen_name(name_str: Optional[str]) -> Optional[str]:
+    """Strictly validate and return clean person name, eliminating headers and keywords."""
+    if not name_str or not str(name_str).strip():
+        return None
+    cleaned = clean_person_name(str(name_str))
+    if len(cleaned) < 2 or len(cleaned) > 60:
+        return None
+    # Check if candidate consists mostly of invalid boilerplate words
+    words = [w.lower() for w in re.findall(r"[A-Za-z]+", cleaned)]
+    if not words:
+        return None
+    if any(w in DISALLOWED_NAME_WORDS for w in words):
+        return None
+    # Check that at least 60% of characters are alphabetic
+    alpha_count = sum(1 for c in cleaned if c.isalpha())
+    if alpha_count / max(1, len(cleaned)) < 0.6:
+        return None
+    return cleaned
+
+
+def extract_pan_number(text: str) -> Optional[str]:
+    """Extract standard Indian Permanent Account Number (5 letters, 4 digits, 1 letter)."""
+    # 1. Direct standard regex: 5 uppercase letters, 4 digits, 1 letter
+    m = re.search(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b", text)
+    if m:
+        return m.group(1).upper()
+    # 2. Preceded by PAN label
+    m_lbl = re.search(r"(?:PAN|Permanent\s+Account\s+Number)[^\w\n]*([A-Z0-9]{10})\b", text, re.I)
+    if m_lbl:
+        val = m_lbl.group(1).upper()
+        if re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", val):
+            return val
+    return None
+
+
+def extract_driving_licence_number(text: str) -> Optional[str]:
+    """Extract Indian Driving Licence number across state formats."""
+    # Pattern 1: DL-1420110012345 or TN38 20110012345 or TN3820110012345
+    m1 = re.search(r"\b([A-Z]{2}[- ]?\d{2}[- ]?\d{4}[- ]?\d{7})\b", text, re.I)
+    if m1:
+        return re.sub(r"\s+", " ", m1.group(1)).strip().upper()
+    # Pattern 2: TN-01-2015-0001234 or TN0120150001234
+    m2 = re.search(r"\b([A-Z]{2}[0-9]{2}\s?[0-9]{11})\b", text, re.I)
+    if m2:
+        return m2.group(1).upper()
+    # Pattern 3: Keyed after DL No / Licence No
+    m3 = re.search(r"(?:DL\s*No\.?|Licence\s*No\.?|License\s*No\.?)[^\w\n]*([A-Z0-9\-\s/]{8,20})", text, re.I)
+    if m3:
+        val = m3.group(1).strip().upper()
+        if len(val) >= 8 and any(c.isdigit() for c in val):
+            return val
+    return None
 
 
 def add_if_found(fields: Dict[str, str], field_name: str, value: Optional[str]) -> None:
     """Add field to result dictionary if value is present and valid."""
     if value and str(value).strip():
         fields[field_name] = str(value).strip()
+

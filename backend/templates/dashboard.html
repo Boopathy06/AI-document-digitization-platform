@@ -292,7 +292,7 @@
                       </button>
                       <button class="btn btn-xs btn-outline-warning duplicate-btn py-1 px-2 ms-1" 
                               data-doc-id="{{ doc.id }}" 
-                              title="Module 12: Advanced Duplicate Detection Analysis">
+                              title="Advanced Duplicate Detection Analysis">
                         <i class="bi bi-shield-shaded me-1"></i> Dupes
                       </button>
                     </td>
@@ -430,12 +430,12 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link btn-sm" id="tab-consistency-btn" data-bs-toggle="pill" data-bs-target="#tab-consistency" type="button" role="tab">
-                <i class="bi bi-check2-circle me-1"></i> Consistency Verification (M13)
+                <i class="bi bi-check2-circle me-1"></i> Consistency Verification
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link btn-sm" id="tab-quality-btn" data-bs-toggle="pill" data-bs-target="#tab-quality" type="button" role="tab">
-                <i class="bi bi-speedometer2 me-1"></i> Technical Quality Score (M14)
+                <i class="bi bi-speedometer2 me-1"></i> Technical Quality Score
               </button>
             </li>
           </ul>
@@ -486,7 +486,7 @@
               </div>
             </div>
 
-            <!-- TAB 2: Consistency Verification (Module 13) -->
+            <!-- TAB 2: Consistency Verification -->
             <div class="tab-pane fade" id="tab-consistency" role="tabpanel">
               <div class="glass-card p-3 mb-3" id="consistencySummaryBanner">
                 <!-- Dynamically populated -->
@@ -513,7 +513,7 @@
               </div>
             </div>
 
-            <!-- TAB 3: Quality and Completeness Score (Module 14) -->
+            <!-- TAB 3: Quality and Completeness Score -->
             <div class="tab-pane fade" id="tab-quality" role="tabpanel">
               <div class="glass-card p-4 mb-3" id="qualityOverviewCard">
                 <!-- Dynamically populated gauge and breakdown -->
@@ -541,7 +541,7 @@
   </div>
 </div>
 
-<!-- Module 11: Manual Verification & Field Correction Modal -->
+<!-- Manual Verification & Field Correction Modal -->
 <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content modal-content-custom">
@@ -649,7 +649,7 @@
   </div>
 </div>
 
-<!-- Module 12: Advanced Duplicate Detection Modal -->
+<!-- Advanced Duplicate Detection Modal -->
 <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content modal-content-custom">
@@ -657,7 +657,7 @@
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-shield-shaded text-warning fs-4"></i>
           <div>
-            <h5 class="modal-title fw-bold mb-0" id="duplicatesModalLabel">Module 12: Advanced Duplicate Detection</h5>
+            <h5 class="modal-title fw-bold mb-0" id="duplicatesModalLabel">Advanced Duplicate Detection</h5>
             <span class="text-muted small" id="duplicatesSubHeader">Multi-field identifier and RapidFuzz personal record comparison</span>
           </div>
         </div>
@@ -748,7 +748,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // 2. Review Button Click Handlers (Module 11)
+  // 2. Review Button Click Handlers
   document.querySelectorAll(".review-btn").forEach(btn => {
     btn.addEventListener("click", function() {
       const docId = this.getAttribute("data-doc-id");
@@ -756,7 +756,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // 3. Duplicate Button Click Handlers (Module 12)
+  // 3. Duplicate Button Click Handlers
   document.querySelectorAll(".duplicate-btn").forEach(btn => {
     btn.addEventListener("click", function() {
       const docId = this.getAttribute("data-doc-id");
@@ -857,7 +857,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById("modalOcrText").textContent = doc.ocr_text || "No OCR text detected.";
 
-    // POPULATE TAB 2: Consistency (M13)
+    // POPULATE TAB 2: Consistency
     if (consistency) {
       const bannerClass = consistency.overall_status === "Passed" ? "alert-success" : (consistency.overall_status === "Failed" ? "alert-danger" : "alert-warning");
       document.getElementById("consistencySummaryBanner").innerHTML = `
@@ -898,7 +898,7 @@ document.addEventListener("DOMContentLoaded", function() {
       `).join("") || '<p class="text-muted small mb-0">No cross-field conflicts detected.</p>';
     }
 
-    // POPULATE TAB 3: Technical Quality (M14)
+    // POPULATE TAB 3: Technical Quality
     if (quality) {
       const qScore = Math.round(quality.overall_score || 0);
       const catClass = qScore >= 85 ? "text-success" : (qScore >= 65 ? "text-info" : "text-warning");
@@ -945,7 +945,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // -------------------------------------------------------------
-  // OPEN REVIEW MODAL (Module 11: Human-in-the-loop validation)
+  // OPEN REVIEW MODAL (Human-in-the-loop validation)
   // -------------------------------------------------------------
   function openReviewModal(docId) {
     document.getElementById("reviewLoading").classList.remove("d-none");
@@ -1130,7 +1130,7 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // -------------------------------------------------------------
-  // OPEN DUPLICATES MODAL (Module 12: Advanced Duplicate Detection)
+  // OPEN DUPLICATES MODAL (Advanced Duplicate Detection)
   // -------------------------------------------------------------
   function openDuplicatesModal(docId) {
     document.getElementById("dupLoading").classList.remove("d-none");

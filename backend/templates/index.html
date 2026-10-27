@@ -121,13 +121,13 @@
           </div>
         </div>
 
-        <!-- Module 10: PDF Multi-Page Digitization Card -->
+        <!-- PDF Multi-Page Digitization Card -->
         {% if pdf_result %}
           <div class="glass-card mb-4 p-4 border border-info border-opacity-50">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h5 class="fw-bold text-white mb-1">
-                  <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>Module 10: Multi-Page PDF Digitization
+                  <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>Multi-Page PDF Digitization
                 </h5>
                 <p class="text-muted small mb-0">
                   Rasterized <strong class="text-white">{{ pdf_result.total_pages }} page{% if pdf_result.total_pages > 1 %}s{% endif %}</strong> at 300 DPI for high-precision OCR and field extraction.
@@ -164,13 +164,13 @@
           </div>
         {% endif %}
 
-        <!-- Module 14: Document Technical Quality & Completeness Score -->
+        <!-- Document Technical Quality & Completeness Score -->
         {% if quality_score_report %}
           <div class="glass-card mb-4 p-4 border border-primary border-opacity-50">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h5 class="fw-bold text-white mb-1">
-                  <i class="bi bi-speedometer2 me-2 text-info"></i>Module 14: Quality & Completeness Score
+                  <i class="bi bi-speedometer2 me-2 text-info"></i>Quality & Completeness Score
                 </h5>
                 <p class="text-muted small mb-0">
                   Comprehensive 0–100 technical rating calculated across image clarity, OCR confidence, and schema completeness.
@@ -256,13 +256,13 @@
           </div>
         {% endif %}
 
-        <!-- Module 13: Consistency Verification Card -->
+        <!-- Consistency Verification Card -->
         {% if consistency_report %}
           <div class="glass-card mb-4 p-4 border border-secondary border-opacity-50">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h5 class="fw-bold text-white mb-1">
-                  <i class="bi bi-patch-check me-2 text-warning"></i>Module 13: Consistency Verification
+                  <i class="bi bi-patch-check me-2 text-warning"></i>Consistency Verification
                 </h5>
                 <p class="text-muted small mb-0">{{ consistency_report.summary }}</p>
               </div>
@@ -303,13 +303,13 @@
           </div>
         {% endif %}
 
-        <!-- Module 11: Human-in-the-Loop Review Banner -->
+        <!-- Human-in-the-Loop Review Banner -->
         {% if verification_report %}
           <div class="glass-card mb-4 p-4 border border-opacity-50 {% if verification_report.flagged_fields_count > 0 %}border-warning{% else %}border-success{% endif %}">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
               <div>
                 <h5 class="fw-bold text-white mb-1">
-                  <i class="bi bi-person-check me-2 text-primary"></i>Module 11: Explainable OCR Validation & Review
+                  <i class="bi bi-person-check me-2 text-primary"></i>Explainable OCR Validation & Review
                 </h5>
                 <p class="text-muted small mb-0">
                   Status: <span class="badge {% if verification_report.overall_status == 'auto_verified' %}bg-success{% elif verification_report.overall_status == 'human_verified' %}bg-primary{% else %}bg-warning text-dark{% endif %} me-2">{{ verification_report.overall_status }}</span>
@@ -348,12 +348,12 @@
           </div>
         {% endif %}
 
-        <!-- Module 12: Advanced Duplicate Detection (RapidFuzz) -->
+        <!-- Advanced Duplicate Detection (RapidFuzz) -->
         {% if advanced_duplicate_report %}
           <div class="glass-card mb-4 p-4 border border-opacity-50 {% if advanced_duplicate_report.is_duplicate %}border-danger{% else %}border-success{% endif %}">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
               <h5 class="fw-bold text-white mb-0">
-                <i class="bi bi-fingerprint me-2 text-info"></i>Module 12: RapidFuzz Multi-Field Duplicate Analysis
+                <i class="bi bi-fingerprint me-2 text-info"></i>RapidFuzz Multi-Field Duplicate Analysis
               </h5>
               <span class="badge {% if advanced_duplicate_report.is_duplicate %}bg-danger{% else %}bg-success{% endif %}">
                 {% if advanced_duplicate_report.is_duplicate %}Potential Duplicate{% else %}Unique Document{% endif %}
@@ -383,7 +383,7 @@
             <div class="col-12 col-md-6">
               <div class="glass-card h-100 p-3">
                 <h6 class="fw-bold text-white mb-3">
-                  <i class="bi bi-camera me-2 text-info"></i>Module 3: Quality Assessment
+                  <i class="bi bi-camera me-2 text-info"></i>Quality Assessment
                 </h6>
                 <div class="d-flex flex-column gap-2 small">
                   <div class="d-flex justify-content-between p-2 rounded bg-dark bg-opacity-50">
@@ -415,7 +415,7 @@
               <div class="glass-card h-100 p-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <h6 class="fw-bold text-white mb-0">
-                    <i class="bi bi-magic me-2 text-primary"></i>Module 4: Enhancement
+                    <i class="bi bi-magic me-2 text-primary"></i>Image Enhancement
                   </h6>
                   <a href="{{ url_for('enhanced_document', filename=enhancement.output_path.name) }}" target="_blank" class="btn btn-sm btn-outline-custom py-0 px-2">
                     <i class="bi bi-box-arrow-up-right me-1"></i> Preview
@@ -438,7 +438,7 @@
         <div class="glass-card mb-4 p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold text-white mb-0">
-              <i class="bi bi-card-checklist me-2 text-success"></i>Module 5: Structured Fields
+              <i class="bi bi-card-checklist me-2 text-success"></i>Structured Fields Extraction
             </h5>
             <span class="badge bg-secondary">Extractor: {{ extraction.extractor_name }}</span>
           </div>
@@ -464,7 +464,7 @@
         <!-- Deduplication Result Card -->
         <div class="glass-card mb-4 p-4 border border-opacity-50 {% if duplicate_check.is_duplicate %}border-danger{% else %}border-success{% endif %}">
           <h5 class="fw-bold text-white mb-2">
-            <i class="bi bi-shield-check me-2 text-warning"></i>Module 6: Exact Duplicate Detection
+            <i class="bi bi-shield-check me-2 text-warning"></i>Exact Duplicate Detection
           </h5>
           <p class="mb-0 {% if duplicate_check.is_duplicate %}text-danger fw-semibold{% else %}text-success{% endif %}">
             {{ duplicate_check.reason }}
@@ -476,7 +476,7 @@
           <div class="glass-card mb-4 p-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h5 class="fw-bold text-white mb-0">
-                <i class="bi bi-terminal me-2 text-info"></i>Module 2: Complete OCR Text
+                <i class="bi bi-terminal me-2 text-info"></i>Complete OCR Text
               </h5>
               <button class="btn btn-sm btn-outline-custom" onclick="navigator.clipboard.writeText(document.getElementById('rawOcrOutput').innerText); this.innerHTML='<i class=\'bi bi-check2 text-success\'></i> Copied'; setTimeout(() => this.innerHTML='<i class=\'bi bi-clipboard\'></i> Copy', 2000)">
                 <i class="bi bi-clipboard"></i> Copy

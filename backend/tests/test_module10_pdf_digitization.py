@@ -162,7 +162,7 @@ class TestModule10PDFDigitization(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.data.decode("utf-8")
-        self.assertIn("Module 10: Multi-Page PDF Digitization", html)
+        self.assertIn("Multi-Page PDF Digitization", html)
         self.assertIn("Page 1", html)
         self.assertIn("Page 2", html)
         self.assertIn("Boopathy", html)
